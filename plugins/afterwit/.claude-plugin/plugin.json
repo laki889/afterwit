@@ -1,0 +1,18 @@
+{
+  "name": "afterwit",
+  "displayName": "Afterwit",
+  "version": "0.1.0",
+  "description": "Lessons learned from your own Claude Code sessions — automatic capture, local distillation, and in-session resurfacing. 100% local; nothing leaves your machine.",
+  "author": {
+    "name": "Lazar Trajkovic"
+  },
+  "license": "MIT",
+  "keywords": [
+    "lessons-learned",
+    "self-reflection",
+    "memory",
+    "retrospective",
+    "local-first",
+    "privacy"
+  ]
+}
