@@ -1,0 +1,28 @@
+{
+  "description": "Afterwit: enqueue finished sessions for lesson distillation (SessionEnd) and surface recent lessons in new sessions (SessionStart). Both scripts are tiny, local-only, and fail silently rather than disturb a session.",
+  "hooks": {
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v python3 >/dev/null 2>&1 && python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/session_end.py\" || python \"${CLAUDE_PLUGIN_ROOT}/hooks/session_end.py\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "startup|clear",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v python3 >/dev/null 2>&1 && python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/session_start.py\" || python \"${CLAUDE_PLUGIN_ROOT}/hooks/session_start.py\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}
