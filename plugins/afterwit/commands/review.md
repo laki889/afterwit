@@ -1,12 +1,11 @@
 ---
 description: Review your recent lessons learned and reflect on patterns
-argument-hint: "[--project NAME] [--limit N]"
 ---
 
 Current lessons digest (read locally from the afterwit database):
 
 Recent lessons:
-!`"${CLAUDE_PLUGIN_ROOT}/bin/afterwit" list --limit 15 $ARGUMENTS 2>&1`
+!`"${CLAUDE_PLUGIN_ROOT}/bin/afterwit" list --limit 15 2>&1`
 
 Stats:
 !`"${CLAUDE_PLUGIN_ROOT}/bin/afterwit" stats 2>&1`

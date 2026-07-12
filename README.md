@@ -69,11 +69,15 @@ initialize themselves.
    `/afterwit:review` gives you a reflective digest in-session, and
    `/afterwit:search <query>` queries the database mid-conversation.
 
-Outside a session, call the CLI directly (or symlink it onto your PATH):
+Outside a session, call the CLI from the installed plugin (the last path
+segment is a version hash, so resolve it with a glob):
 
+```sh
+"$(ls -td ~/.claude/plugins/cache/afterwit/afterwit/*/ | head -1)bin/afterwit" stats
 ```
-~/.claude/plugins/cache/afterwit/plugins/afterwit/bin/afterwit stats
-```
+
+or clone this repo anywhere and run `plugins/afterwit/bin/afterwit` from the
+checkout — every copy of the CLI reads the same database.
 
 ## How it works
 
@@ -92,13 +96,21 @@ queue.jsonl ──► afterwit sync ──► SQLite DB ────────
   meta records, and subagent sidechains.
 - Dedup happens twice: the extraction prompt sees your existing lesson titles,
   and a normalized key catches near-duplicates locally.
-- Sessions are processed exactly once; failures are retried up to 3 times.
+- Sessions are processed exactly once; a session that fails gets up to 3
+  total attempts across sync runs. If the backend itself is unavailable
+  (CLI missing from PATH, not authenticated, Ollama down), the run aborts
+  without consuming attempts — nothing is ever dropped because of an
+  environment problem.
 
 ## Scheduling sync
 
 Transcripts are purged after ~30 days (`cleanupPeriodDays` in Claude Code's
 settings.json — raise it if you want more slack), so distill regularly.
 Lessons themselves are kept forever.
+
+The installed plugin lives under a per-version hash directory, so scheduled
+jobs should resolve it with a glob (or run from a stable `git clone` of this
+repo — any copy of the CLI reads the same database):
 
 **macOS (launchd)** — `~/Library/LaunchAgents/dev.afterwit.sync.plist`:
 
@@ -110,7 +122,7 @@ Lessons themselves are kept forever.
   <key>Label</key><string>dev.afterwit.sync</string>
   <key>ProgramArguments</key><array>
     <string>/bin/sh</string><string>-c</string>
-    <string>"$HOME"/.claude/plugins/cache/afterwit/plugins/afterwit/bin/afterwit sync</string>
+    <string>export PATH="$HOME/.local/bin:/usr/local/bin:/opt/homebrew/bin:$PATH"; "$(ls -td "$HOME"/.claude/plugins/cache/afterwit/afterwit/*/ | head -1)bin/afterwit" sync</string>
   </array>
   <key>StartCalendarInterval</key><dict>
     <key>Hour</key><integer>13</integer><key>Minute</key><integer>0</integer>
@@ -120,29 +132,43 @@ Lessons themselves are kept forever.
 
 Then `launchctl load ~/Library/LaunchAgents/dev.afterwit.sync.plist`.
 
-**Linux (cron)** — `crontab -e`:
+**Linux (cron)** — `crontab -e` (cron's PATH is minimal, so add the
+directory containing the `claude` binary — find it with `which claude`):
 
 ```
-0 13 * * * "$HOME"/.claude/plugins/cache/afterwit/plugins/afterwit/bin/afterwit sync
+0 13 * * * PATH="$HOME/.local/bin:/usr/local/bin:/opt/homebrew/bin:$PATH" "$(ls -td "$HOME"/.claude/plugins/cache/afterwit/afterwit/*/ | head -1)bin/afterwit" sync
 ```
+
+If `claude` isn't reachable from the job's PATH, sync aborts cleanly and the
+queue is untouched — nothing is lost, but nothing is distilled either, so
+check the job's output once after setting it up.
 
 **Claude Code Desktop** users can instead create a daily scheduled task
 ("Routines" page) that runs `afterwit sync` — it executes locally.
 
 ## Configuration (optional)
 
-`~/.local/share/afterwit/config.json` (see `afterwit paths`):
+`~/.local/share/afterwit/config.json` (see `afterwit paths`). All keys are
+optional; this example shows the defaults (note: JSON — no comments allowed):
 
 ```json
 {
-  "backend": "claude",          // or "ollama" (max privacy)
-  "claude_model": null,         // e.g. "haiku" to distill cheaply
+  "backend": "claude",
+  "claude_model": null,
   "ollama_model": "llama3.1",
-  "inject_enabled": true,       // SessionStart lessons block
-  "inject_count": 4,            // lessons per new session
-  "min_confidence": 0.3         // discard lessons the model itself doubts
+  "inject_enabled": true,
+  "inject_count": 4,
+  "min_confidence": 0.3
 }
 ```
+
+- `backend` — `"claude"` (your own CLI) or `"ollama"` (max privacy).
+- `claude_model` — e.g. `"haiku"` to distill cheaply; `null` = CLI default.
+- `inject_enabled` / `inject_count` — the SessionStart lessons block.
+- `min_confidence` — discard lessons the model itself doubts (0–1).
+
+If the file is invalid JSON, `afterwit sync` warns on stderr and uses the
+defaults.
 
 ## Your data is yours
 

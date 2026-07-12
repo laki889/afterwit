@@ -13,14 +13,40 @@ immediately. The run itself never raises on a single bad session.
 
 from __future__ import annotations
 
+import contextlib
 import sys
 from typing import Any
 
-from . import capture, config, parser, store, synth
+from . import capture, config, parser, paths, store, synth
+
+try:
+    import fcntl
+except ImportError:  # Windows
+    fcntl = None
 
 MAX_ATTEMPTS = 3
 MIN_MESSAGES = 3        # sessions smaller than this can't contain a lesson
 MIN_RENDER_CHARS = 500
+
+
+@contextlib.contextmanager
+def _single_instance():
+    """Prevent two concurrent sync runs (e.g. cron firing while a manual run
+    is going): both would distill the same sessions and waste LLM calls.
+    Yields False (and does nothing) if another run holds the lock."""
+    lock_path = paths.data_dir() / "sync.lock"
+    with lock_path.open("a") as fh:
+        if fcntl is not None:
+            try:
+                fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except OSError:
+                yield False
+                return
+        try:
+            yield True
+        finally:
+            if fcntl is not None:
+                fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
 
 
 def run(
@@ -32,7 +58,25 @@ def run(
     limit: int | None = None,
     out=sys.stdout,
 ) -> dict[str, Any]:
-    cfg = config.load()
+    with _single_instance() as acquired:
+        if not acquired:
+            print("afterwit sync: another sync is already running — exiting.", file=out)
+            return {"queued": 0, "eligible": 0, "sessions": 0, "lessons_new": 0,
+                    "lessons_duplicate": 0, "failed": 0, "skipped": 0, "locked": True}
+        return _run_locked(backend=backend, project=project, since=since,
+                           dry_run=dry_run, limit=limit, out=out)
+
+
+def _run_locked(
+    *,
+    backend: str | None,
+    project: str | None,
+    since: str | None,
+    dry_run: bool,
+    limit: int | None,
+    out,
+) -> dict[str, Any]:
+    cfg = config.load(warn=True)
     backend_name = backend or cfg.get("backend", "claude")
     if backend_name not in synth.BACKENDS:
         raise SystemExit(f"unknown backend '{backend_name}' (use claude or ollama)")
@@ -45,7 +89,7 @@ def run(
         if (not project or r.get("project") == project)
         and (not since or str(r.get("enqueued_at", "")) >= since)
     ]
-    if limit:
+    if limit is not None:
         todo = todo[: max(0, limit)]
     summary = {"queued": len(queue), "eligible": len(todo), "sessions": 0,
                "lessons_new": 0, "lessons_duplicate": 0, "failed": 0, "skipped": 0}
@@ -101,6 +145,15 @@ def run(
             prompt = synth.build_prompt(store.existing_titles(conn, proj))
             try:
                 raw = infer(prompt, rendered, cfg)
+            except synth.BackendUnavailable as e:
+                # Environmental failure (no binary / not authenticated / server
+                # down): every remaining session would fail identically, so
+                # abort WITHOUT charging attempts — the queue stays intact.
+                print(f"\nafterwit sync: backend unavailable — {e}", file=out)
+                print("Nothing was dropped; run sync again once the backend works.", file=out)
+                summary["failed"] += 1
+                summary["aborted"] = True
+                break
             except synth.BackendError as e:
                 _note_failure(rec, updated, done_ids, conn, out, label, str(e), summary, dry_run)
                 continue
@@ -148,13 +201,9 @@ def run(
         conn.close()
 
     if not dry_run:
-        remaining = []
-        for rec in capture.read_queue():
-            sid = rec.get("session_id")
-            if sid in done_ids:
-                continue
-            remaining.append(updated.get(sid, rec))
-        capture.rewrite(remaining)
+        # Locked read-filter-write, so sessions enqueued while we were
+        # distilling are preserved.
+        capture.drop_and_update(done_ids, updated)
 
     print(
         f"afterwit sync: {summary['sessions']} session(s) processed, "

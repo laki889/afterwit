@@ -156,8 +156,10 @@ class SyncPipelineTestCase(unittest.TestCase):
         self.assertEqual(summary2["lessons_new"], 0)
 
     def test_backend_failure_keeps_queued_and_counts_attempts(self):
+        # A per-session failure (NOT an auth/availability error — those abort
+        # the run without charging attempts; see test_review_fixes).
         envelope = {"type": "result", "subtype": "success", "is_error": True,
-                    "result": "Failed to authenticate"}
+                    "result": "Internal error while streaming the response"}
         os.environ["AFTERWIT_CLAUDE_BIN"] = str(_write_stub(self.tmp, envelope))
         from afterwit import capture, store
 

@@ -11,6 +11,8 @@ The block is kept small — a handful of lessons, each clipped — so it costs
 only a few hundred tokens of context.
 """
 
+from __future__ import annotations
+
 import json
 import os
 import sys

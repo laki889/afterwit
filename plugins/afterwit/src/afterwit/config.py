@@ -6,6 +6,7 @@ Every value has a default so the plugin works with zero manual setup.
 from __future__ import annotations
 
 import json
+import sys
 from typing import Any
 
 from . import paths
@@ -27,7 +28,11 @@ DEFAULTS: dict[str, Any] = {
 }
 
 
-def load() -> dict[str, Any]:
+def load(warn: bool = False) -> dict[str, Any]:
+    """Load config with defaults. Hooks call this with warn=False (nothing may
+    disturb a session); CLI entry points pass warn=True so a broken config —
+    which would silently fall back to defaults, e.g. ignoring a configured
+    ollama backend — is surfaced on stderr instead of being swallowed."""
     cfg = dict(DEFAULTS)
     p = paths.config_path()
     try:
@@ -35,8 +40,17 @@ def load() -> dict[str, Any]:
             user = json.loads(p.read_text(encoding="utf-8"))
             if isinstance(user, dict):
                 cfg.update(user)
-    except (OSError, json.JSONDecodeError):
-        pass  # bad config must never break capture/injection
+            elif warn:
+                print(f"afterwit: {p} is not a JSON object — using defaults.", file=sys.stderr)
+    except json.JSONDecodeError as e:
+        if warn:
+            print(
+                f"afterwit: {p} is invalid JSON ({e}) — using defaults. "
+                "Note: JSON does not allow // comments.",
+                file=sys.stderr,
+            )
+    except OSError:
+        pass  # unreadable config must never break capture/injection
     return cfg
 
 

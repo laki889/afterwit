@@ -13,5 +13,6 @@ Run it with the Bash tool (it may take a minute or two per session — it calls
 the local `claude` CLI or Ollama once per queued session; use run_in_background
 if the queue is long). Then report the summary line to the user: how many
 sessions were processed, how many new lessons were stored, and any failures.
-If it fails with an authentication error, tell the user to run `claude login`
-(or switch to the Ollama backend with `--backend ollama`).
+If it fails with an authentication error, tell the user to run
+`claude auth login` in a terminal (or switch to the Ollama backend with
+`--backend ollama`).

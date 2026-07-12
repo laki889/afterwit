@@ -222,5 +222,11 @@ def render_transcript(t: Transcript, max_chars: int = 200_000) -> str:
             removed = tail.pop(0)  # drop from the middle, oldest first
             total -= len(removed) + 2
             dropped += 1
+        # Oversized head alone can still bust the budget (a few huge early
+        # messages) — trim the head from its end, but never below 2 messages.
+        while len(head) > 2 and total > max_chars:
+            removed = head.pop()
+            total -= len(removed) + 2
+            dropped += 1
         rendered = head + [f"…[{dropped} messages omitted for length]…"] + tail
     return "\n\n".join(rendered)

@@ -14,11 +14,13 @@ Design constraints (see README / spec):
 
 from __future__ import annotations
 
+import hashlib
 import re
 import sqlite3
 import unicodedata
 from datetime import datetime, timezone
 from typing import Any, Iterable
+from urllib.parse import quote
 
 from . import paths
 
@@ -59,8 +61,10 @@ CREATE TABLE IF NOT EXISTS processed_sessions (
 
 CREATE INDEX IF NOT EXISTS idx_lessons_created ON lessons(created_at);
 CREATE INDEX IF NOT EXISTS idx_lessons_project ON lessons(project);
-CREATE INDEX IF NOT EXISTS idx_lessons_dedup   ON lessons(dedup_key);
 CREATE INDEX IF NOT EXISTS idx_tags_tag        ON tags(tag);
+-- Hard backstop for the check-then-insert dedup (concurrent writers).
+CREATE UNIQUE INDEX IF NOT EXISTS idx_lessons_dedup
+  ON lessons(dedup_key, COALESCE(project, ''));
 """
 
 _FTS_SCHEMA = """
@@ -88,7 +92,10 @@ def connect(readonly: bool = False) -> sqlite3.Connection:
     db = paths.db_path()
     if readonly:
         # Never creates the file; raises OperationalError if it doesn't exist.
-        conn = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+        # Percent-encode the path so '?', '#' or '%' in a custom data dir
+        # can't be misread as URI syntax (which could drop mode=ro).
+        uri = "file:" + quote(db.as_posix(), safe="/:") + "?mode=ro"
+        conn = sqlite3.connect(uri, uri=True)
         conn.row_factory = sqlite3.Row
         return conn
     db.parent.mkdir(parents=True, exist_ok=True)
@@ -145,22 +152,34 @@ _STOPWORDS = frozenset(
 def _stem(word: str) -> str:
     """Crude suffix stripping — only has to be consistent, not linguistic,
     so "await"/"awaiting" and "query"/"queries" collide."""
-    for suffix in ("ing", "ies", "es", "ed", "s"):
+    if word.endswith("ies") and len(word) >= 5:
+        return word[:-3] + "y"  # queries -> query
+    for suffix in ("ing", "es", "ed", "s"):
         if word.endswith(suffix) and len(word) - len(suffix) >= 3:
             return word[: -len(suffix)]
     return word
 
 
+# Unicode-aware word pattern (\w minus underscore) so non-English titles get
+# real keys instead of all collapsing to the same empty signature.
+_WORD_RE = re.compile(r"[^\W_]+", re.UNICODE)
+
+
 def dedup_key(title: str, lesson: str) -> str:
     """Normalized key for near-duplicate detection: significant stemmed words
     of the title (order-insensitive), so "Always await async setup" and
-    "always awaiting async setup" collide."""
-    text = unicodedata.normalize("NFKD", title.lower())
-    words = re.findall(r"[a-z0-9]+", text)
+    "always awaiting async setup" collide. Deliberate tradeoff: two genuinely
+    different titles built from the same word set also collide — acceptable,
+    since reworded duplicates are far more common than same-words anagrams."""
+    text = unicodedata.normalize("NFKC", title.lower())
+    words = _WORD_RE.findall(text)
     sig = sorted({_stem(w) for w in words if w not in _STOPWORDS})
     if not sig:  # degenerate title — fall back to the lesson body
-        words = re.findall(r"[a-z0-9]+", lesson.lower())
+        words = _WORD_RE.findall(unicodedata.normalize("NFKC", lesson.lower()))
         sig = sorted({_stem(w) for w in words if w not in _STOPWORDS})[:12]
+    if not sig:  # still nothing word-like — never collide with other lessons
+        digest = hashlib.sha1((title + "\x00" + lesson).encode("utf-8")).hexdigest()
+        return f"raw-{digest[:16]}"
     return "-".join(sig)
 
 
@@ -190,25 +209,28 @@ def insert_lesson(
     ).fetchone()
     if dup is not None:
         return None
-    cur = conn.execute(
-        """INSERT INTO lessons
-           (title, problem, root_cause, resolution, lesson, confidence,
-            project, session_id, source_ts, created_at, dedup_key)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        (
-            title.strip(),
-            problem.strip(),
-            (root_cause or "").strip() or None,
-            (resolution or "").strip() or None,
-            lesson.strip(),
-            confidence,
-            project,
-            session_id,
-            source_ts,
-            utcnow(),
-            key,
-        ),
-    )
+    try:
+        cur = conn.execute(
+            """INSERT INTO lessons
+               (title, problem, root_cause, resolution, lesson, confidence,
+                project, session_id, source_ts, created_at, dedup_key)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                title.strip(),
+                problem.strip(),
+                (root_cause or "").strip() or None,
+                (resolution or "").strip() or None,
+                lesson.strip(),
+                confidence,
+                project,
+                session_id,
+                source_ts,
+                utcnow(),
+                key,
+            ),
+        )
+    except sqlite3.IntegrityError:
+        return None  # unique-index backstop: another writer won the race
     lesson_id = cur.lastrowid
     for tag in {t.strip().lower() for t in tags if t and t.strip()}:
         conn.execute(
@@ -369,7 +391,8 @@ def stats(conn: sqlite3.Connection) -> dict[str, Any]:
         ).fetchall()
     ]
     recent = conn.execute(
-        "SELECT COUNT(*) c FROM lessons WHERE created_at >= datetime('now', '-30 days')"
+        # created_at is "%Y-%m-%dT%H:%M:%SZ" — compare against the same shape
+        "SELECT COUNT(*) c FROM lessons WHERE created_at >= strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-30 days')"
     ).fetchone()["c"]
     return {
         "total_lessons": total,

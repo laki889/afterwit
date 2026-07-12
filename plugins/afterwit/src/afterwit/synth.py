@@ -45,7 +45,14 @@ def build_prompt(known_titles: list[str]) -> str:
 
 
 class BackendError(Exception):
-    """Inference failed in a way worth retrying later."""
+    """Inference failed for this session in a way worth retrying later."""
+
+
+class BackendUnavailable(BackendError):
+    """The backend itself is unusable (missing binary, auth expired, server
+    down) — the whole sync run should abort WITHOUT charging retry attempts,
+    since every session would fail identically (think: cron job on a box
+    where `claude` isn't on PATH)."""
 
 
 # ---------------------------------------------------------------------------
@@ -66,28 +73,32 @@ def _scrubbed_env() -> dict[str, str]:
 
 def call_claude(prompt: str, transcript_text: str, cfg: dict[str, Any]) -> str:
     """Run `claude -p` headless with all tools disabled and return the model's
-    text. Uses the user's existing CLI auth — no new credentials, no new party."""
+    text. Uses the user's existing CLI auth — no new credentials, no new party.
+    Prompt AND transcript both go via stdin so nothing appears in process argv
+    (visible to `ps`)."""
     binary = os.environ.get("AFTERWIT_CLAUDE_BIN", "claude")
     cmd = [
-        binary, "-p", prompt,
+        binary, "-p",
         "--tools", "",
         "--output-format", "json",
         "--no-session-persistence",
     ]
     if cfg.get("claude_model"):
         cmd += ["--model", str(cfg["claude_model"])]
+    stdin_payload = f"{prompt}\n\n--- SESSION TRANSCRIPT ---\n{transcript_text}"
     try:
         proc = subprocess.run(
             cmd,
-            input=transcript_text,
+            input=stdin_payload,
             capture_output=True,
             text=True,
             timeout=int(cfg.get("claude_timeout", 600)),
             env=_scrubbed_env(),
         )
     except FileNotFoundError:
-        raise BackendError(
-            f"`{binary}` not found on PATH. Install Claude Code or set AFTERWIT_CLAUDE_BIN."
+        raise BackendUnavailable(
+            f"`{binary}` not found on PATH. Install Claude Code, set AFTERWIT_CLAUDE_BIN, "
+            "or (for cron/launchd) put its directory on PATH in the job definition."
         )
     except subprocess.TimeoutExpired:
         raise BackendError("claude -p timed out")
@@ -104,7 +115,12 @@ def call_claude(prompt: str, transcript_text: str, cfg: dict[str, Any]) -> str:
     if not isinstance(envelope, dict):
         return proc.stdout
     if envelope.get("is_error") or envelope.get("subtype") != "success":
-        raise BackendError(f"claude -p error: {str(envelope.get('result'))[:300]}")
+        detail = str(envelope.get("result"))[:300]
+        if "authenticate" in detail.lower() or "log in" in detail.lower():
+            raise BackendUnavailable(
+                f"claude CLI is not authenticated ({detail}). Run `claude auth login`."
+            )
+        raise BackendError(f"claude -p error: {detail}")
     result = envelope.get("result")
     return result if isinstance(result, str) else json.dumps(result)
 
@@ -135,11 +151,14 @@ def call_ollama(prompt: str, transcript_text: str, cfg: dict[str, Any]) -> str:
     req = urllib.request.Request(
         f"{base}/api/chat", data=body, headers={"Content-Type": "application/json"}
     )
+    # ProxyHandler({}) disables http_proxy/HTTPS_PROXY env vars — without it a
+    # configured proxy would receive the transcript, violating "100% local".
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
     try:
-        with urllib.request.urlopen(req, timeout=int(cfg.get("ollama_timeout", 600))) as resp:
+        with opener.open(req, timeout=int(cfg.get("ollama_timeout", 600))) as resp:
             payload = json.loads(resp.read().decode("utf-8"))
     except urllib.error.URLError as e:
-        raise BackendError(
+        raise BackendUnavailable(
             f"Ollama not reachable at {base} ({e.reason if hasattr(e, 'reason') else e}). "
             "Start it with `ollama serve` and pull a model, or use the claude backend."
         )
@@ -179,7 +198,10 @@ def parse_lessons(text: str) -> tuple[list[dict[str, Any]], str | None]:
         if start != -1 and end > start:
             data = _try_json(cleaned[start : end + 1])
     if isinstance(data, dict):
-        data = data.get("lessons", data.get("items"))
+        if "title" in data and "lesson" in data:
+            data = [data]  # a single bare lesson object without the array
+        else:
+            data = data.get("lessons", data.get("items"))
     if data is None:
         return [], f"no JSON found in model output: {cleaned[:120]!r}"
     if not isinstance(data, list):
