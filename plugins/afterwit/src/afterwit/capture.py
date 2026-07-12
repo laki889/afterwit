@@ -54,10 +54,16 @@ def remove(session_ids: set[str]) -> None:
     or found permanently unprocessable)."""
     if not session_ids:
         return
-    remaining = [r for r in read_queue() if r.get("session_id") not in session_ids]
+    rewrite([r for r in read_queue() if r.get("session_id") not in session_ids])
+
+
+def rewrite(records: list[dict[str, Any]]) -> None:
+    """Atomically replace the queue contents (used to drop processed entries
+    and persist per-record attempt counters)."""
     q = paths.queue_path()
+    q.parent.mkdir(parents=True, exist_ok=True)
     tmp = q.with_suffix(".jsonl.tmp")
     with tmp.open("w", encoding="utf-8") as f:
-        for rec in remaining:
+        for rec in records:
             f.write(json.dumps(rec, ensure_ascii=False) + "\n")
     tmp.replace(q)

@@ -1,0 +1,18 @@
+#!/usr/bin/env python3
+"""Launcher for the bundled afterwit package (no install step needed).
+
+Lives in the plugin's bin/ directory, which Claude Code adds to the Bash
+tool's PATH inside sessions; outside sessions run it directly or symlink it
+somewhere on your PATH.
+"""
+
+import os
+import sys
+
+sys.path.insert(
+    0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "src")
+)
+
+from afterwit.cli import main  # noqa: E402
+
+main()

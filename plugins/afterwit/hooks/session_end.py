@@ -21,6 +21,8 @@ sys.path.insert(
 
 
 def main() -> None:
+    if os.environ.get("AFTERWIT_SYNC"):
+        return  # this session IS an afterwit extraction run — never capture it
     payload = json.load(sys.stdin)
     if not isinstance(payload, dict):
         return
