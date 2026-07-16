@@ -47,6 +47,28 @@ class StoreTestCase(unittest.TestCase):
         self.store.connect().close()
         self.store.connect().close()  # second init must not raise
 
+    def test_old_database_migrates_in_place(self):
+        """A DB stamped with an older schema_version is brought forward on
+        the next write connection — the user never reinstalls anything —
+        and existing lessons survive the upgrade."""
+        conn = self.store.connect()
+        self.store.insert_lesson(conn, title="pre-upgrade lesson",
+                                 problem="p", lesson="l", project="proj-a")
+        conn.execute("UPDATE meta SET value='0' WHERE key='schema_version'")
+        conn.commit()
+        conn.close()
+
+        conn = self.store.connect()  # simulates first run of a newer plugin
+        try:
+            version = conn.execute(
+                "SELECT value FROM meta WHERE key='schema_version'"
+            ).fetchone()["value"]
+            self.assertEqual(version, str(self.store.SCHEMA_VERSION))
+            titles = [r["title"] for r in self.store.list_lessons(conn)]
+            self.assertEqual(titles, ["pre-upgrade lesson"])
+        finally:
+            conn.close()
+
     def test_readonly_never_creates_file(self):
         from afterwit import paths
         with self.assertRaises(sqlite3.OperationalError):

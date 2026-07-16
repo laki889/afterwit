@@ -135,7 +135,26 @@ def _init_schema(conn: sqlite3.Connection) -> None:
 
 
 def _migrate(conn: sqlite3.Connection, from_version: int) -> None:
-    # Future migrations run here, stepwise: if from_version < 2: ...
+    """In-place, automatic schema upgrades. Users never reinstall or lose
+    data: the first WRITE connection after a plugin update lands here and
+    brings the database forward, one version at a time.
+
+    Recipe for a future change (say v2 adds a `review_count` column and a
+    `notes` table):
+      1. bump SCHEMA_VERSION to 2
+      2. NEW TABLES go in _SCHEMA as CREATE TABLE IF NOT EXISTS — they
+         appear on old databases automatically, no migration code needed
+      3. NEW COLUMNS need a stepwise block here, because CREATE IF NOT
+         EXISTS never alters an existing table:
+             if from_version < 2:
+                 conn.execute(
+                     "ALTER TABLE lessons ADD COLUMN review_count "
+                     "INTEGER NOT NULL DEFAULT 0"
+                 )
+    Rules: migrations are ADDITIVE only (lessons are never destroyed), each
+    block is guarded by `if from_version < N`, and new code must tolerate
+    the old shape until a write connection has run — readers open the DB
+    read-only and cannot migrate it."""
     conn.execute(
         "UPDATE meta SET value=? WHERE key='schema_version'", (str(SCHEMA_VERSION),)
     )
