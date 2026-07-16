@@ -231,7 +231,22 @@ prints (default `~/.local/share/afterwit`).
 
 The database is a plain SQLite file (`afterwit paths` shows where). Open it
 with any SQLite tool — DB Browser, `sqlite3`, a VS Code extension. The CLI is
-convenience, not lock-in. Note: transcripts (Claude Code's own files) may
+convenience, not lock-in.
+
+The schema (authoritative copy in `src/afterwit/store.py`; dump yours with
+`sqlite3 "$(afterwit paths | awk '/database/{print $2}')" .schema`):
+
+| Table | Purpose |
+|---|---|
+| `lessons` | one row per lesson: `title`, `problem`, `root_cause`, `resolution`, `lesson`, `confidence` (0–1), `project`, `session_id` + `source_ts` (provenance), `created_at`, `dedup_key` (normalized title key; UNIQUE per project) |
+| `tags` | lesson↔tag pairs (`ON DELETE CASCADE`) |
+| `processed_sessions` | which session ids were already distilled, when, and how many lessons they yielded |
+| `meta` | `schema_version` for in-place migrations |
+| `lessons_fts` | FTS5 index over title/problem/lesson/resolution, kept in sync by triggers (absent if your SQLite lacks FTS5 — search falls back to LIKE) |
+
+Timestamps are UTC ISO-8601 strings. Lessons are never auto-deleted;
+`afterwit delete <id>` is the only destructive operation, and the FTS
+triggers keep the index consistent when you use it. Note: transcripts (Claude Code's own files) may
 contain sensitive values; afterwit stores only the distilled lessons and
 tells the model to keep secrets out of them — but review `afterwit list -v`
 output before sharing it anywhere.
