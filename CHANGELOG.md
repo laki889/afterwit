@@ -1,11 +1,14 @@
 # Changelog
 
-## 0.3.0 — 2026-07-15
+## 0.3.0 — 2026-07-16
 
 - Bundled MCP server (`lessons`): read-only `query_lessons`,
   `recent_lessons`, and `lesson_stats` tools over the local database, so
   Claude can consult past lessons mid-session. Stdlib-only JSON-RPC/stdio;
   never writes, never touches the network.
+- Docs: full config reference, troubleshooting, uninstall, database
+  schema, migration recipe, CONTRIBUTING.md with the privacy contract.
+- Verified on Python 3.9 (macOS system Python) through 3.13.
 
 ## 0.2.0 — 2026-07-15
 
