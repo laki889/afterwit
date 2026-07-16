@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.0 — 2026-07-15
+
+- `afterwit serve`: local web dashboard (127.0.0.1 only, Host-header
+  validated, read-only, zero external assets) — search, tag/project/month
+  filters, month-grouped timeline, trend charts, light/dark themes.
+- `afterwit report`: the same dashboard as one portable, self-contained
+  HTML snapshot with the data inlined (`--project` scopes both the feed
+  and the recomputed stats).
+- Hardening from adversarial review: DNS-rebinding defense, degraded-DB
+  handling on `/api/data`, script-breakout escaping for inlined lesson
+  content, keyboard-focus preservation across filter re-renders.
+
 ## 0.1.0 — 2026-07-13
 
 Initial MVP.

@@ -124,6 +124,20 @@ def cmd_delete(args) -> None:
         conn.close()
 
 
+def cmd_serve(args) -> None:
+    from . import serve
+
+    serve.run(port=args.port, open_browser=args.open)
+
+
+def cmd_report(args) -> None:
+    from . import report
+
+    path = report.write(out=args.out, project=args.project)
+    print(f"wrote {path}")
+    print("Self-contained snapshot — open it in any browser; no server needed.")
+
+
 def cmd_paths(args) -> None:
     print(f"data dir: {paths.data_dir(create=False)}")
     print(f"database: {paths.db_path()}")
@@ -164,6 +178,16 @@ def main(argv: list[str] | None = None) -> None:
     p = sub.add_parser("stats", help="counts, top tags, trends")
     p.add_argument("--json", action="store_true")
     p.set_defaults(func=cmd_stats)
+
+    p = sub.add_parser("serve", help="local web dashboard (127.0.0.1 only)")
+    p.add_argument("--port", type=int, default=8377)
+    p.add_argument("--open", action="store_true", help="open the browser")
+    p.set_defaults(func=cmd_serve)
+
+    p = sub.add_parser("report", help="write a self-contained lessons.html snapshot")
+    p.add_argument("--out", default="lessons.html")
+    p.add_argument("--project", help="only this project")
+    p.set_defaults(func=cmd_report)
 
     p = sub.add_parser("queue", help="show sessions waiting for sync")
     p.set_defaults(func=cmd_queue)

@@ -34,7 +34,10 @@ makes sure it arrives **before** the next one.
   prompt forbids copying secrets into lessons.
 - The whole plugin is a few small, dependency-free Python files. Audit it in
   one sitting: `grep -rn "urllib\|socket\|http" plugins/afterwit/src` finds
-  exactly one network call site — the loopback-only Ollama backend.
+  exactly one **outbound** call site (the loopback-only Ollama backend) and
+  one **inbound** one (the dashboard's `http.server`, hard-bound to
+  127.0.0.1 with Host-header validation against DNS rebinding). The
+  dashboard page itself loads no external fonts, scripts, or styles.
 
 ## Install
 
@@ -68,6 +71,16 @@ initialize themselves.
    ```
    `/afterwit:review` gives you a reflective digest in-session, and
    `/afterwit:search <query>` queries the database mid-conversation.
+4. Browse the full history visually:
+   ```
+   afterwit serve           # local dashboard at http://127.0.0.1:8377
+   afterwit report          # write lessons.html — a self-contained snapshot
+   ```
+   The dashboard has full-text search, tag/project/month filters (click a
+   month bar, a tag, or a project), a timeline grouped by month, and trend
+   charts — live from the database, refreshed every few seconds. `report`
+   produces the same page as a single portable HTML file with the data
+   inlined: double-click it, no server needed.
 
 Outside a session, call the CLI from the installed plugin (the last path
 segment is a version hash, so resolve it with a glob):
@@ -89,6 +102,9 @@ queue.jsonl ──► afterwit sync ──► SQLite DB ────────
                (parse JSONL,      (~/.local/share/afterwit/afterwit.db,
                 distill via YOUR   lessons kept forever, WAL, readers
                 claude/Ollama)     open read-only)
+                                      │
+                                      ├──► afterwit serve   (127.0.0.1 dashboard)
+                                      └──► afterwit report  (portable lessons.html)
 ```
 
 - The transcript parser groups streamed assistant chunks by message id
