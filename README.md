@@ -81,6 +81,11 @@ initialize themselves.
    charts — live from the database, refreshed every few seconds. `report`
    produces the same page as a single portable HTML file with the data
    inlined: double-click it, no server needed.
+5. Ask Claude directly. The plugin bundles a local MCP server (`lessons`)
+   with read-only tools — `query_lessons`, `recent_lessons`,
+   `lesson_stats` — so mid-session questions like *"what have I learned
+   about async retries?"* are answered from your own database. Fully local,
+   never writes.
 
 Outside a session, call the CLI from the installed plugin (the last path
 segment is a version hash, so resolve it with a glob):

@@ -11,8 +11,12 @@ from the developer's past Claude Code sessions. It is 100% local.
 
 ## How to query it
 
-Use the bundled CLI (read-only commands; `afterwit` is also on PATH inside
-sessions via the plugin's bin/ directory):
+Preferred: the plugin's MCP tools (server `lessons`) — `query_lessons`
+(full-text + tag/project filters), `recent_lessons`, and `lesson_stats`.
+They are read-only and fully local.
+
+Equivalent CLI, useful for flags the tools don't expose (`afterwit` is also
+on PATH inside sessions via the plugin's bin/ directory):
 
 ```bash
 "${CLAUDE_PLUGIN_ROOT}/bin/afterwit" search <keywords>   # full-text search

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0 — 2026-07-15
+
+- Bundled MCP server (`lessons`): read-only `query_lessons`,
+  `recent_lessons`, and `lesson_stats` tools over the local database, so
+  Claude can consult past lessons mid-session. Stdlib-only JSON-RPC/stdio;
+  never writes, never touches the network.
+
 ## 0.2.0 — 2026-07-15
 
 - `afterwit serve`: local web dashboard (127.0.0.1 only, Host-header
