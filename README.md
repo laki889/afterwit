@@ -45,7 +45,7 @@ Requires Claude Code and Python 3.9+ (`python3` on PATH — preinstalled on
 macOS and most Linux distros).
 
 ```
-/plugin marketplace add lazartrajkovic/afterwit
+/plugin marketplace add laki889/afterwit
 /plugin install afterwit@afterwit
 ```
 
