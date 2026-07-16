@@ -6,6 +6,8 @@
   "author": {
     "name": "Lazar Trajkovic"
   },
+  "homepage": "https://github.com/lazartrajkovic/afterwit",
+  "repository": "https://github.com/lazartrajkovic/afterwit",
   "license": "MIT",
   "keywords": [
     "lessons-learned",

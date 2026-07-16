@@ -25,6 +25,8 @@ DEFAULTS: dict[str, Any] = {
     # Synthesis
     "min_confidence": 0.3,         # discard lessons the model itself doubts
     "max_transcript_chars": 200_000,  # truncate huge sessions before distilling
+    "claude_timeout": 600,         # seconds per claude -p call
+    "ollama_timeout": 600,         # seconds per Ollama call
 }
 
 

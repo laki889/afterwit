@@ -52,6 +52,11 @@ macOS and most Linux distros).
 That's it — no config, no accounts, no setup. The hooks and database
 initialize themselves.
 
+To install from a local clone instead (development, or before trusting a
+remote): `/plugin marketplace add /path/to/afterwit` then the same install
+command. After pulling updates run `/plugin marketplace update afterwit`
+and `/plugin update afterwit`.
+
 ## Use
 
 1. Work with Claude Code as usual. Finished sessions are queued automatically.
@@ -69,8 +74,10 @@ initialize themselves.
    afterwit queue           # sessions waiting for sync
    afterwit delete <id>     # lessons are never auto-deleted; this is manual
    ```
-   `/afterwit:review` gives you a reflective digest in-session, and
-   `/afterwit:search <query>` queries the database mid-conversation.
+   `/afterwit:review` gives you a reflective digest in-session,
+   `/afterwit:search <query>` queries the database mid-conversation, and
+   the `/afterwit:lessons` skill teaches Claude to check your lessons on
+   its own before re-solving an old problem.
 4. Browse the full history visually:
    ```
    afterwit serve           # local dashboard at http://127.0.0.1:8377
@@ -169,27 +176,56 @@ check the job's output once after setting it up.
 
 ## Configuration (optional)
 
-`~/.local/share/afterwit/config.json` (see `afterwit paths`). All keys are
-optional; this example shows the defaults (note: JSON — no comments allowed):
+`~/.local/share/afterwit/config.json` (see `afterwit paths`). Every key is
+optional (note: JSON — no comments allowed). The full set, with defaults:
 
-```json
-{
-  "backend": "claude",
-  "claude_model": null,
-  "ollama_model": "llama3.1",
-  "inject_enabled": true,
-  "inject_count": 4,
-  "min_confidence": 0.3
-}
-```
-
-- `backend` — `"claude"` (your own CLI) or `"ollama"` (max privacy).
-- `claude_model` — e.g. `"haiku"` to distill cheaply; `null` = CLI default.
-- `inject_enabled` / `inject_count` — the SessionStart lessons block.
-- `min_confidence` — discard lessons the model itself doubts (0–1).
+| Key | Default | Meaning |
+|---|---|---|
+| `backend` | `"claude"` | Inference for `sync`: `"claude"` (your own CLI) or `"ollama"` (max privacy) |
+| `claude_model` | `null` | e.g. `"haiku"` to distill cheaply; `null` = your CLI's default model |
+| `claude_timeout` | `600` | seconds per `claude -p` call |
+| `ollama_url` | `"http://localhost:11434"` | must be loopback — anything else is refused |
+| `ollama_model` | `"llama3.1"` | local model name |
+| `ollama_timeout` | `600` | seconds per Ollama call |
+| `inject_enabled` | `true` | SessionStart "recent lessons" block on/off |
+| `inject_count` | `4` | lessons per new session (1–10) |
+| `inject_min_confidence` | `0.0` | hide low-confidence lessons from injection |
+| `min_confidence` | `0.3` | discard lessons the model itself doubts at sync time |
+| `max_transcript_chars` | `200000` | rendering budget per session before distilling |
 
 If the file is invalid JSON, `afterwit sync` warns on stderr and uses the
-defaults.
+defaults. `AFTERWIT_DATA_DIR` (env) relocates the whole data dir;
+`AFTERWIT_CLAUDE_BIN` (env) points at a non-PATH `claude` binary.
+
+## Troubleshooting
+
+- **`sync` says "backend unavailable … not authenticated"** — run
+  `claude auth login` in a terminal. Nothing was lost: environmental
+  failures never consume retry attempts.
+- **`sync` says "`claude` not found on PATH"** — from cron/launchd, add the
+  binary's directory to the job's PATH (see Scheduling), or set
+  `AFTERWIT_CLAUDE_BIN=/path/to/claude`.
+- **Ollama backend: "not reachable"** — start `ollama serve` and pull the
+  configured model. If it fails with "mkdir ~/.ollama: file exists", a stray
+  *file* named `~/.ollama` is blocking it — remove that file.
+- **`serve` says "cannot bind 127.0.0.1:8377"** — another instance is
+  running; reuse it or pass `--port 8378`.
+- **No lessons block at session start** — the block appears only on fresh
+  starts (`startup`/`clear`, not resume), only when the DB has lessons, and
+  only if `inject_enabled` is true.
+- **Sessions pile up in `afterwit queue`** — that's by design; nothing is
+  distilled until you run `sync` (schedule it, below).
+- **Where is everything?** — `afterwit paths`.
+
+## Uninstall
+
+```
+/plugin uninstall afterwit
+```
+
+Your lessons are yours and survive this: the database lives outside the
+plugin. To delete the data too, remove the directory `afterwit paths`
+prints (default `~/.local/share/afterwit`).
 
 ## Your data is yours
 
@@ -204,6 +240,24 @@ output before sharing it anywhere.
 
 Hooks and CLI need `python3` (or `python`) on PATH inside Git Bash. Data
 lives under `%LOCALAPPDATA%\afterwit`.
+
+## Development
+
+Everything is stdlib Python — no install step:
+
+```
+python3 -m unittest discover -s tests        # 73 tests, ~6s
+AFTERWIT_DATA_DIR=$(mktemp -d) plugins/afterwit/bin/afterwit paths   # sandboxed run
+```
+
+`AFTERWIT_DATA_DIR` points every entry point (CLI, hooks, MCP server) at an
+alternate data directory, so you can exercise anything against throwaway
+data without touching your real lessons. `tests/fixtures/` contains a
+synthetic transcript that mirrors the real JSONL format; verified platform
+schemas live in [docs/platform-notes.md](docs/platform-notes.md). See
+[CONTRIBUTING.md](CONTRIBUTING.md) for the ground rules — the short
+version: nothing may add a network call, a dependency, or a write path to
+the readers.
 
 ## License
 
