@@ -1,6 +1,7 @@
 ---
 description: Search your lessons-learned database (full-text, local)
 argument-hint: "<query>"
+allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/afterwit" *)
 ---
 
 Search the local afterwit lessons database for: $ARGUMENTS

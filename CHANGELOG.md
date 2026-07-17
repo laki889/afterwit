@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- `/afterwit:serve` slash command: opens the local dashboard from inside a
+  session (background server, browser auto-open; stops when the session
+  ends — use `afterwit serve` in a terminal for a persistent one).
+- All slash commands pre-approve their own bundled-CLI calls via
+  `allowed-tools`, removing the per-invocation permission prompt.
+
 ## 0.3.0 — 2026-07-16
 
 - Bundled MCP server (`lessons`): read-only `query_lessons`,

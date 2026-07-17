@@ -1,6 +1,7 @@
 ---
 description: Distill queued Claude Code sessions into lessons learned (runs locally)
 argument-hint: "[--dry-run] [--project NAME] [--limit N] [--backend claude|ollama]"
+allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/afterwit" *)
 ---
 
 Run the afterwit synthesis pipeline over the queued sessions:

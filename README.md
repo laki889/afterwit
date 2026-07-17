@@ -87,7 +87,9 @@ and `/plugin update afterwit`.
    month bar, a tag, or a project), a timeline grouped by month, and trend
    charts — live from the database, refreshed every few seconds. `report`
    produces the same page as a single portable HTML file with the data
-   inlined: double-click it, no server needed.
+   inlined: double-click it, no server needed. In-session, `/afterwit:serve`
+   starts the same dashboard in the background (it stops when the session
+   ends; use the terminal for a persistent one).
 5. Ask Claude directly. The plugin bundles a local MCP server (`lessons`)
    with read-only tools — `query_lessons`, `recent_lessons`,
    `lesson_stats` — so mid-session questions like *"what have I learned

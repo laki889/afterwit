@@ -1,5 +1,6 @@
 ---
 description: Review your recent lessons learned and reflect on patterns
+allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/afterwit" *)
 ---
 
 Current lessons digest (read locally from the afterwit database):
