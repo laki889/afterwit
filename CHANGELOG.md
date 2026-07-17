@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Ollama backend hardening (max-privacy path now reliable end-to-end):
+  requests use grammar-constrained JSON mode (`format: "json"`) and
+  `temperature: 0`, so small local models stop wrapping the lesson array in
+  prose/markdown; a not-yet-pulled model (HTTP 404) is now reported as an
+  actionable `ollama pull <model>` hint and aborts the run without charging
+  retries, instead of being misdiagnosed as "server not reachable". Covered by
+  unit tests for every failure mode plus a real-socket end-to-end sync test.
 - Windows support pass (every entry point had a real defect — found by a
   three-way platform/security/release review): UTF-8 forced at every pipe
   boundary (claude subprocess, CLI stdout, hook stdin, MCP stdio);

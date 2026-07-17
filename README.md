@@ -220,9 +220,15 @@ defaults. `AFTERWIT_DATA_DIR` (env) relocates the whole data dir;
 - **`sync` says "`claude` not found on PATH"** — from cron/launchd, add the
   binary's directory to the job's PATH (see Scheduling), or set
   `AFTERWIT_CLAUDE_BIN=/path/to/claude`.
-- **Ollama backend: "not reachable"** — start `ollama serve` and pull the
-  configured model. If it fails with "mkdir ~/.ollama: file exists", a stray
-  *file* named `~/.ollama` is blocking it — remove that file.
+- **Ollama backend: "not reachable"** — start `ollama serve`. If it fails
+  with "mkdir ~/.ollama: file exists", `~/.ollama` is not a usable directory
+  — most often a stray *file* by that name, or a **symlink to an unmounted
+  volume** (`ls -la ~/.ollama`). Remove the file, mount the volume, or repoint
+  `OLLAMA_MODELS` at a real directory.
+- **Ollama backend: "model … is not available"** — the configured model
+  isn't pulled yet. Run `ollama pull <model>` (default `llama3.1`) or set a
+  different `ollama_model`. Like the other environmental failures, this aborts
+  the run without consuming retry attempts, so nothing in the queue is lost.
 - **`serve` says "cannot bind 127.0.0.1:8377"** — another instance is
   running; reuse it or pass `--port 8378`.
 - **No lessons block at session start** — the block appears only on fresh

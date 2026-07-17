@@ -145,10 +145,19 @@ def call_ollama(prompt: str, transcript_text: str, cfg: dict[str, Any]) -> str:
             f"ollama_url host '{host}' is not loopback. Afterwit only talks to a "
             "LOCAL Ollama server — refusing to send data anywhere else."
         )
+    model = str(cfg.get("ollama_model", "llama3.1"))
     body = json.dumps(
         {
-            "model": cfg.get("ollama_model", "llama3.1"),
+            "model": model,
             "stream": False,
+            # Grammar-constrain the reply to valid JSON. Small local models are
+            # far less reliable than Claude at "STRICT JSON only" instructions;
+            # without this they wrap the array in prose/markdown and every
+            # session fails to parse. The prompt still asks for JSON, which
+            # Ollama requires when this is set.
+            "format": "json",
+            # Deterministic extraction — no creativity wanted here.
+            "options": {"temperature": 0},
             "messages": [
                 {"role": "user", "content": f"{prompt}\n\n--- SESSION TRANSCRIPT ---\n{transcript_text}"}
             ],
@@ -163,18 +172,50 @@ def call_ollama(prompt: str, transcript_text: str, cfg: dict[str, Any]) -> str:
     try:
         with opener.open(req, timeout=int(cfg.get("ollama_timeout", 600))) as resp:
             payload = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        # HTTPError is a URLError subclass, so it MUST be caught first. The
+        # common case is a model that hasn't been pulled: Ollama answers 404
+        # with {"error": "model '...' not found, try pulling it first"}. That
+        # fails identically for every queued session, so it's BackendUnavailable
+        # (abort the run, don't charge retries) — but surface the actionable
+        # hint instead of the misleading generic "not reachable".
+        detail = _read_http_error(e)
+        if e.code == 404 or "not found" in detail.lower() or "try pulling" in detail.lower():
+            raise BackendUnavailable(
+                f"Ollama model '{model}' is not available ({detail or 'not found'}). "
+                f"Pull it first with `ollama pull {model}`, or set a different "
+                "ollama_model in config."
+            )
+        raise BackendError(f"Ollama HTTP {e.code}: {detail or e.reason}")
     except urllib.error.URLError as e:
         raise BackendUnavailable(
             f"Ollama not reachable at {base} ({e.reason if hasattr(e, 'reason') else e}). "
-            "Start it with `ollama serve` and pull a model, or use the claude backend."
+            f"Start it with `ollama serve` and `ollama pull {model}`, or use the "
+            "claude backend."
         )
     except (json.JSONDecodeError, OSError) as e:
         raise BackendError(f"Ollama returned an unreadable response: {e}")
     message = payload.get("message") or {}
-    content = message.get("content", "")
+    content = (message.get("content") or "").strip()
     if not content:
         raise BackendError(f"Ollama returned no content: {str(payload)[:200]}")
     return content
+
+
+def _read_http_error(e: urllib.error.HTTPError) -> str:
+    """Best-effort extraction of Ollama's error message from an HTTP error
+    body (`{"error": "..."}`), for a useful diagnostic. Never raises."""
+    try:
+        raw = e.read().decode("utf-8", "replace")
+    except OSError:
+        return ""
+    try:
+        obj = json.loads(raw)
+    except json.JSONDecodeError:
+        return raw.strip()[:300]
+    if isinstance(obj, dict) and obj.get("error"):
+        return str(obj["error"])
+    return raw.strip()[:300]
 
 
 BACKENDS = {"claude": call_claude, "ollama": call_ollama}

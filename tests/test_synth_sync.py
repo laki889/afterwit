@@ -13,6 +13,7 @@ import stat
 import sys
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "plugins" / "afterwit" / "src"))
@@ -85,6 +86,90 @@ class ParseLessonsTestCase(unittest.TestCase):
     def test_ollama_refuses_non_loopback(self):
         with self.assertRaises(synth.BackendError):
             synth.call_ollama("p", "t", {"ollama_url": "http://example.com:11434"})
+
+
+class OllamaBackendTestCase(unittest.TestCase):
+    """call_ollama's request shaping and failure taxonomy, exercised against a
+    fake urllib opener (no real socket) so every branch is deterministic."""
+
+    def _patch_opener(self, handler):
+        """Route call_ollama's HTTP through `handler(request) -> body-bytes`
+        (or a raised urllib error). Returns the captured Request objects."""
+        captured = []
+
+        class _Resp:
+            def __init__(self, body):
+                self._body = body
+            def __enter__(self):
+                return self
+            def __exit__(self, *a):
+                return False
+            def read(self):
+                return self._body
+
+        class _Opener:
+            def open(self, req, timeout=None):
+                captured.append(req)
+                result = handler(req)
+                if isinstance(result, Exception):
+                    raise result
+                return _Resp(result)
+
+        patcher = unittest.mock.patch.object(
+            synth.urllib.request, "build_opener", lambda *a, **k: _Opener()
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        return captured
+
+    def test_success_returns_content_and_sends_json_mode(self):
+        reply = json.dumps({"message": {"content": json.dumps([LESSON])}}).encode()
+        captured = self._patch_opener(lambda req: reply)
+        out = synth.call_ollama("PROMPT", "TRANSCRIPT", {"ollama_model": "llama3.1"})
+        self.assertEqual(json.loads(out)[0]["title"], LESSON["title"])
+        # Request is well-formed: loopback /api/chat, JSON-mode on, model + both
+        # prompt and transcript in the single user message.
+        sent = json.loads(captured[0].data.decode("utf-8"))
+        self.assertTrue(captured[0].full_url.endswith("/api/chat"))
+        self.assertEqual(sent["format"], "json")
+        self.assertFalse(sent["stream"])
+        self.assertEqual(sent["model"], "llama3.1")
+        self.assertIn("PROMPT", sent["messages"][0]["content"])
+        self.assertIn("TRANSCRIPT", sent["messages"][0]["content"])
+
+    def test_model_not_pulled_is_unavailable_with_hint(self):
+        err = synth.urllib.error.HTTPError(
+            "http://localhost:11434/api/chat", 404, "Not Found", {},
+            io.BytesIO(b'{"error":"model \\"llama3.1\\" not found, try pulling it first"}'),
+        )
+        self._patch_opener(lambda req: err)
+        with self.assertRaises(synth.BackendUnavailable) as cm:
+            synth.call_ollama("p", "t", {"ollama_model": "llama3.1"})
+        self.assertIn("ollama pull llama3.1", str(cm.exception))
+
+    def test_server_down_is_unavailable(self):
+        err = synth.urllib.error.URLError("Connection refused")
+        self._patch_opener(lambda req: err)
+        with self.assertRaises(synth.BackendUnavailable) as cm:
+            synth.call_ollama("p", "t", {})
+        self.assertIn("ollama serve", str(cm.exception))
+
+    def test_other_http_error_is_retryable_backend_error(self):
+        err = synth.urllib.error.HTTPError(
+            "http://localhost:11434/api/chat", 500, "Server Error", {},
+            io.BytesIO(b'{"error":"llama runner process has terminated"}'),
+        )
+        self._patch_opener(lambda req: err)
+        with self.assertRaises(synth.BackendError) as cm:
+            synth.call_ollama("p", "t", {})
+        self.assertNotIsInstance(cm.exception, synth.BackendUnavailable)
+        self.assertIn("runner process", str(cm.exception))
+
+    def test_empty_content_is_backend_error(self):
+        reply = json.dumps({"message": {"content": "   "}}).encode()
+        self._patch_opener(lambda req: reply)
+        with self.assertRaises(synth.BackendError):
+            synth.call_ollama("p", "t", {})
 
 
 def _write_stub(dirpath: Path, envelope: dict) -> Path:
@@ -226,6 +311,60 @@ class SyncPipelineTestCase(unittest.TestCase):
     def test_project_filter(self):
         summary = self._run_sync(project="not-this-project")
         self.assertEqual(summary["eligible"], 0)
+
+    def test_end_to_end_with_real_ollama_server(self):
+        """Drive the whole sync pipeline over the ollama backend against a real
+        HTTP server on 127.0.0.1 speaking Ollama's /api/chat — exercising the
+        actual socket, urllib request, loopback check, and JSON-mode reply, no
+        mock, no model download."""
+        import http.server
+        import threading
+
+        seen = {}
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def log_message(self, *a):  # silence request logging in test output
+                pass
+
+            def do_POST(self):
+                length = int(self.headers.get("Content-Length", 0))
+                seen["req"] = json.loads(self.rfile.read(length).decode("utf-8"))
+                seen["path"] = self.path
+                # Emulate a JSON-mode reply: content is the bare JSON array.
+                reply = json.dumps(
+                    {"message": {"role": "assistant", "content": json.dumps([LESSON])}}
+                ).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(reply)))
+                self.end_headers()
+                self.wfile.write(reply)
+
+        srv = http.server.HTTPServer(("127.0.0.1", 0), Handler)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        self.addCleanup(srv.server_close)
+        self.addCleanup(srv.shutdown)
+        port = srv.server_address[1]
+
+        from afterwit import config, paths, store
+        config.save({**config.DEFAULTS, "backend": "ollama",
+                     "ollama_url": f"http://127.0.0.1:{port}"})
+        try:
+            summary = self._run_sync()
+        finally:
+            paths.config_path().unlink(missing_ok=True)
+
+        self.assertEqual(summary["sessions"], 1)
+        self.assertEqual(summary["lessons_new"], 1)
+        self.assertEqual(seen["path"], "/api/chat")
+        self.assertEqual(seen["req"]["format"], "json")   # JSON mode really sent
+        conn = store.connect(readonly=True)
+        try:
+            rows = store.list_lessons(conn)
+            self.assertEqual(len(rows), 1)
+            self.assertEqual(rows[0]["title"], LESSON["title"])
+        finally:
+            conn.close()
 
 
 if __name__ == "__main__":
