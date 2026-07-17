@@ -2,7 +2,8 @@
   "name": "afterwit",
   "description": "Afterwit — systematic self-reflection from your own Claude Code sessions.",
   "owner": {
-    "name": "Lazar Trajkovic"
+    "name": "Lazar Trajkovic",
+    "email": "lazartrajkovic1989@gmail.com"
   },
   "plugins": [
     {
@@ -10,7 +11,8 @@
       "source": "./plugins/afterwit",
       "description": "Lessons learned from your own Claude Code sessions — automatic capture, local distillation, in-session resurfacing. 100% local.",
       "author": {
-        "name": "Lazar Trajkovic"
+        "name": "Lazar Trajkovic",
+        "email": "lazartrajkovic1989@gmail.com"
       },
       "license": "MIT",
       "category": "development-workflows",
