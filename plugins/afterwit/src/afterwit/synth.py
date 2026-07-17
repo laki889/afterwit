@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
 import subprocess
 import urllib.error
 import urllib.parse
@@ -77,8 +78,10 @@ def call_claude(prompt: str, transcript_text: str, cfg: dict[str, Any]) -> str:
     Prompt AND transcript both go via stdin so nothing appears in process argv
     (visible to `ps`)."""
     binary = os.environ.get("AFTERWIT_CLAUDE_BIN", "claude")
+    # shutil.which honors PATHEXT, so an npm-installed `claude.cmd` on
+    # Windows resolves too (bare CreateProcess only finds .exe).
     cmd = [
-        binary, "-p",
+        shutil.which(binary) or binary, "-p",
         "--tools", "",
         "--output-format", "json",
         "--no-session-persistence",
@@ -91,7 +94,10 @@ def call_claude(prompt: str, transcript_text: str, cfg: dict[str, Any]) -> str:
             cmd,
             input=stdin_payload,
             capture_output=True,
-            text=True,
+            # explicit: Windows would otherwise pipe in cp1252 and die on
+            # the first arrow/box-drawing character in a transcript
+            encoding="utf-8",
+            errors="replace",
             timeout=int(cfg.get("claude_timeout", 600)),
             env=_scrubbed_env(),
         )

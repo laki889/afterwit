@@ -23,6 +23,8 @@ sys.path.insert(
 def main() -> None:
     if os.environ.get("AFTERWIT_SYNC"):
         return  # this session IS an afterwit extraction run — never capture it
+    if hasattr(sys.stdin, "reconfigure"):
+        sys.stdin.reconfigure(encoding="utf-8")  # payload is UTF-8, not cp1252
     payload = json.load(sys.stdin)
     if not isinstance(payload, dict):
         return

@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "lessons": {
-      "command": "python3",
+      "command": "${AFTERWIT_PYTHON:-python3}",
       "args": ["${CLAUDE_PLUGIN_ROOT}/mcp/query_lessons.py"]
     }
   }

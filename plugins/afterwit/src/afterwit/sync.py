@@ -19,11 +19,6 @@ from typing import Any
 
 from . import capture, config, parser, paths, store, synth
 
-try:
-    import fcntl
-except ImportError:  # Windows
-    fcntl = None
-
 MAX_ATTEMPTS = 3
 MIN_MESSAGES = 3        # sessions smaller than this can't contain a lesson
 MIN_RENDER_CHARS = 500
@@ -36,17 +31,13 @@ def _single_instance():
     Yields False (and does nothing) if another run holds the lock."""
     lock_path = paths.data_dir() / "sync.lock"
     with lock_path.open("a") as fh:
-        if fcntl is not None:
-            try:
-                fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except OSError:
-                yield False
-                return
+        if not capture.lock_file(fh, blocking=False):
+            yield False
+            return
         try:
             yield True
         finally:
-            if fcntl is not None:
-                fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
+            capture.unlock_file(fh)
 
 
 def run(

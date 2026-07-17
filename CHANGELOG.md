@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Windows support pass (every entry point had a real defect — found by a
+  three-way platform/security/release review): UTF-8 forced at every pipe
+  boundary (claude subprocess, CLI stdout, hook stdin, MCP stdio);
+  `bin/afterwit` is now an sh/python polyglot that probes for a working
+  interpreter (surviving a missing `python3` and the Microsoft-Store alias
+  stub), and the hooks probe the same way; npm's `claude.cmd` resolves via
+  PATHEXT; queue/sync locking gets an msvcrt fallback (closing a silent
+  lost-queue-entry race); `.mcp.json` spawns `${AFTERWIT_PYTHON:-python3}`
+  so Windows users have a documented override.
+- CI: GitHub Actions matrix — Linux/macOS/Windows × Python 3.9/3.13.
 - `afterwit backfill` (and the `/afterwit:backfill` slash command): queue
   sessions that predate the install from Claude Code's own transcript store
   (newest-first, 10 by default; `--limit`, `--days`, `--project`,

@@ -157,6 +157,14 @@ def cmd_paths(args) -> None:
 
 
 def main(argv: list[str] | None = None) -> None:
+    # Windows pipes default to cp1252, which can't encode lesson text or the
+    # stats bars; force UTF-8 (tests may substitute StringIO, hence the guard).
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            try:
+                stream.reconfigure(encoding="utf-8", errors="replace")
+            except (OSError, ValueError):
+                pass
     ap = argparse.ArgumentParser(
         prog="afterwit",
         description="Lessons learned from your own Claude Code sessions — 100% local.",

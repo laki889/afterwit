@@ -223,6 +223,12 @@ def handle(msg: dict) -> None:
 
 
 def main() -> None:
+    # JSON-RPC frames are UTF-8; Windows pipes default to cp1252, which
+    # would kill the read loop on the first non-Latin-1 byte sequence and
+    # break responses containing non-cp1252 lesson text.
+    for stream in (sys.stdin, sys.stdout):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
     for line in sys.stdin:
         line = line.strip()
         if not line:

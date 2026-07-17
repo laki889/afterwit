@@ -88,15 +88,26 @@ class ParseLessonsTestCase(unittest.TestCase):
 
 
 def _write_stub(dirpath: Path, envelope: dict) -> Path:
-    """A fake `claude` CLI: ignores args, prints the given envelope."""
-    stub = dirpath / "claude-stub"
+    """A fake `claude` CLI: ignores args, prints the given envelope. On
+    Windows the returned launcher is a .cmd shim (like npm's claude.cmd),
+    which also exercises call_claude's PATHEXT-aware resolution."""
+    stub = dirpath / "claude-stub.py"
     stub.write_text(
-        "#!/usr/bin/env python3\nimport json,sys\n"
+        "import json,sys\n"
+        "sys.stdin.reconfigure(encoding='utf-8')\n"
+        "sys.stdout.reconfigure(encoding='utf-8')\n"
         "sys.stdin.read()\n"
-        f"print(json.dumps({envelope!r}))\n"
+        f"print(json.dumps({envelope!r}, ensure_ascii=False))\n",
+        encoding="utf-8",
     )
-    stub.chmod(stub.stat().st_mode | stat.S_IEXEC)
-    return stub
+    if os.name == "nt":
+        shim = dirpath / "claude-stub.cmd"
+        shim.write_text(f'@"{sys.executable}" "{stub}" %*\n', encoding="utf-8")
+        return shim
+    runner = dirpath / "claude-stub"
+    runner.write_text(f'#!/bin/sh\nexec "{sys.executable}" "{stub}" "$@"\n')
+    runner.chmod(runner.stat().st_mode | stat.S_IEXEC)
+    return runner
 
 
 class SyncPipelineTestCase(unittest.TestCase):
@@ -123,6 +134,16 @@ class SyncPipelineTestCase(unittest.TestCase):
     def _run_sync(self, **kwargs):
         from afterwit import sync
         return sync.run(out=io.StringIO(), **kwargs)
+
+    def test_call_claude_roundtrips_utf8(self):
+        # On Windows, subprocess pipes default to cp1252 — this round-trip
+        # (arrow + check chars both directions) pins the explicit UTF-8.
+        from afterwit import synth
+        envelope = {"type": "result", "subtype": "success", "is_error": False,
+                    "result": "ok → ✓ Ünïcode"}
+        os.environ["AFTERWIT_CLAUDE_BIN"] = str(_write_stub(self.tmp, envelope))
+        out = synth.call_claude("prompt with → arrow", "transcript ✓", {})
+        self.assertEqual(out, "ok → ✓ Ünïcode")
 
     def test_end_to_end_with_stub_claude(self):
         envelope = {

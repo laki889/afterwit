@@ -268,8 +268,18 @@ output before sharing it anywhere.
 
 ## Windows
 
-Hooks and CLI need `python3` (or `python`) on PATH inside Git Bash. Data
-lives under `%LOCALAPPDATA%\afterwit`.
+Claude Code runs plugin commands through Git Bash. The CLI launcher and
+hooks probe for a *working* interpreter (`python3`, then `python`) and
+skip the Microsoft-Store alias stub, so any real Python 3.9+ install
+works. The CLI, hooks, and MCP server force UTF-8 on their pipes (Windows
+consoles default to cp1252), queue locking uses msvcrt byte-range locks,
+and an npm-installed `claude.cmd` resolves for `sync`. Data lives under
+`%LOCALAPPDATA%\afterwit`.
+
+One caveat: the bundled MCP server is spawned as `python3` by default
+(MCP config can't probe). If `/mcp` shows the `lessons` server failing,
+set the `AFTERWIT_PYTHON` environment variable to your interpreter
+(e.g. `python`) and restart Claude Code.
 
 ## Development
 

@@ -4,8 +4,9 @@ SessionEnd appends one record per finished session; `afterwit sync` drains
 it. A flat file (rather than the DB) keeps the hook path trivial and
 auditable. A tiny advisory lock (queue.lock) serializes appends against the
 drain-time rewrite, so a session ending WHILE sync runs can't be lost to the
-rewrite's replace(). On platforms without fcntl (Windows) the lock degrades
-to best-effort; the enqueue side stays idempotent either way.
+rewrite's replace() — via fcntl on POSIX and msvcrt byte-range locks on
+Windows. If locking itself fails it degrades to best-effort rather than
+raising; the enqueue side stays idempotent either way.
 """
 
 from __future__ import annotations
@@ -20,20 +21,63 @@ try:
     import fcntl
 except ImportError:  # Windows
     fcntl = None
+try:
+    import msvcrt
+except ImportError:  # POSIX
+    msvcrt = None
+
+
+def lock_file(fh, blocking: bool = True) -> bool:
+    """Advisory exclusive lock on an open file handle. Returns False when the
+    lock can't be taken (held elsewhere, or the platform call failed); True
+    otherwise — including on platforms with neither fcntl nor msvcrt, where
+    locking silently degrades to best-effort."""
+    if fcntl is not None:
+        flags = fcntl.LOCK_EX if blocking else fcntl.LOCK_EX | fcntl.LOCK_NB
+        try:
+            fcntl.flock(fh.fileno(), flags)
+        except OSError:
+            return False
+        return True
+    if msvcrt is not None:
+        # msvcrt locks one byte at the current position (lockable past EOF —
+        # the lock files stay empty). LK_LOCK retries ~10s before raising;
+        # LK_NBLCK raises immediately if the lock is held.
+        mode = msvcrt.LK_LOCK if blocking else msvcrt.LK_NBLCK
+        try:
+            fh.seek(0)
+            msvcrt.locking(fh.fileno(), mode, 1)
+        except OSError:
+            return False
+        return True
+    return True
+
+
+def unlock_file(fh) -> None:
+    """Release a lock_file() lock; never raises."""
+    try:
+        if fcntl is not None:
+            fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
+        elif msvcrt is not None:
+            fh.seek(0)
+            msvcrt.locking(fh.fileno(), msvcrt.LK_UNLCK, 1)
+    except OSError:
+        pass
 
 
 @contextlib.contextmanager
 def queue_lock():
-    """Advisory exclusive lock over queue mutations (blocking, short-lived)."""
+    """Advisory exclusive lock over queue mutations (blocking, short-lived).
+    Degrades to unlocked best-effort rather than raising — the enqueue side
+    runs inside a session hook and must never disturb the session."""
     lock_path = paths.data_dir() / "queue.lock"
     with lock_path.open("a") as fh:
-        if fcntl is not None:
-            fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
+        locked = lock_file(fh)
         try:
             yield
         finally:
-            if fcntl is not None:
-                fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
+            if locked:
+                unlock_file(fh)
 
 
 def enqueue(record: dict[str, Any]) -> bool:

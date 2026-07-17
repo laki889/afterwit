@@ -63,6 +63,8 @@ def build_context(payload: dict) -> str | None:
 
 
 def main() -> None:
+    if hasattr(sys.stdin, "reconfigure"):
+        sys.stdin.reconfigure(encoding="utf-8")  # payload is UTF-8, not cp1252
     payload = json.load(sys.stdin)
     if not isinstance(payload, dict):
         return
