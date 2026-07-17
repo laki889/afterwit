@@ -38,6 +38,17 @@ def _print_lessons(lessons: list[dict], verbose: bool = False) -> None:
         print()
 
 
+def cmd_backfill(args) -> None:
+    from . import backfill
+
+    backfill.run(
+        limit=args.limit,
+        days=args.days,
+        project=args.project,
+        dry_run=args.dry_run,
+    )
+
+
 def cmd_sync(args) -> None:
     from . import sync
 
@@ -152,6 +163,16 @@ def main(argv: list[str] | None = None) -> None:
     )
     ap.add_argument("--version", action="version", version=f"afterwit {__version__}")
     sub = ap.add_subparsers(dest="command", required=True)
+
+    p = sub.add_parser(
+        "backfill", help="queue sessions from before afterwit was installed"
+    )
+    p.add_argument("--limit", type=int, default=10,
+                   help="newest eligible sessions to queue (default 10)")
+    p.add_argument("--days", type=int, help="only sessions active in the last N days")
+    p.add_argument("--project", help="only sessions from this project")
+    p.add_argument("--dry-run", action="store_true", help="show what would be queued")
+    p.set_defaults(func=cmd_backfill)
 
     p = sub.add_parser("sync", help="distill queued sessions into lessons")
     p.add_argument("--backend", choices=["claude", "ollama"], help="inference backend")

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- `afterwit backfill`: queue sessions that predate the install from Claude
+  Code's own transcript store (newest-first, 10 by default; `--limit`,
+  `--days`, `--project`, `--dry-run`). Recovers project/cwd from the
+  transcript itself, skips already-queued/processed sessions (idempotent),
+  live sessions, extraction runs, subagent sidecars, and sessions below
+  sync's triviality bar.
 - Dashboard: quick filter chips beside the search bar (5 most popular
   tags + all projects), shorter lesson summaries in the feed, and a
   per-lesson detail page — lesson, what went wrong, root cause, and how

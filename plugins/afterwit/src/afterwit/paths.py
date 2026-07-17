@@ -55,6 +55,21 @@ def log_path() -> Path:
     return data_dir() / "afterwit.log"
 
 
+def claude_projects_dir() -> Path:
+    """Claude Code's own transcript store (read-only for us). Resolution:
+      1. $AFTERWIT_CLAUDE_DIR/projects   (explicit override; also used by tests)
+      2. $CLAUDE_CONFIG_DIR/projects     (the host's own config-dir override)
+      3. ~/.claude/projects              (default)
+    """
+    override = os.environ.get("AFTERWIT_CLAUDE_DIR")
+    if override:
+        return Path(override).expanduser() / "projects"
+    cfg = os.environ.get("CLAUDE_CONFIG_DIR")
+    if cfg:
+        return Path(cfg).expanduser() / "projects"
+    return Path.home() / ".claude" / "projects"
+
+
 def project_name_from_cwd(cwd: str) -> str:
     """Derive a human-readable project name from a session's cwd."""
     if not cwd:

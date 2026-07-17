@@ -52,10 +52,17 @@ macOS and most Linux distros).
 That's it — no config, no accounts, no setup. The hooks and database
 initialize themselves.
 
+Already have session history on this machine? Capture normally starts with
+the first session that ends *after* install, but `afterwit backfill` queues
+your existing sessions too (newest-first, 10 by default; `--limit N`,
+`--days N`, `--project X`, `--dry-run`). Run it soon after installing and
+follow with `afterwit sync` — Claude Code purges old transcripts on its own
+retention schedule (~30 days).
+
 To install from a local clone instead (development, or before trusting a
 remote): `/plugin marketplace add /path/to/afterwit` then the same install
 command. After pulling updates run `/plugin marketplace update afterwit`
-and `/plugin update afterwit`.
+and `/plugin update afterwit@afterwit`.
 
 ## Use
 
@@ -68,6 +75,7 @@ and `/plugin update afterwit`.
 3. New sessions automatically open with a short "lessons from your past
    sessions" block. Browse the history any time:
    ```
+   afterwit backfill        # first install? queue pre-existing sessions
    afterwit list            # newest lessons
    afterwit search sqlite   # full-text search
    afterwit stats           # trends, top tags, lessons over time
