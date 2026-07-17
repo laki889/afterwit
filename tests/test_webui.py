@@ -87,6 +87,19 @@ class ReportTestCase(unittest.TestCase):
         self.assertNotIn("Zombie process", html)
 
 
+class PageTemplateTestCase(unittest.TestCase):
+    def test_template_renders_detail_scaffolding(self):
+        # render_page() uses string.Template.substitute, which raises on any
+        # stray '$' in the page — this test catches that at edit time, and
+        # pins the detail-route + quick-filter scaffolding.
+        from afterwit import webui
+        html = webui.render_page()
+        self.assertIn('id="detail"', html)
+        self.assertIn('id="quickfilters"', html)
+        self.assertIn("#/lesson/", html)
+        self.assertIn("Learn more", html)
+
+
 class ServeTestCase(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()

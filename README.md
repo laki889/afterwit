@@ -83,9 +83,13 @@ and `/plugin update afterwit`.
    afterwit serve           # local dashboard at http://127.0.0.1:8377
    afterwit report          # write lessons.html — a self-contained snapshot
    ```
-   The dashboard has full-text search, tag/project/month filters (click a
+   The dashboard has full-text search, quick filter chips beside the
+   search bar (top tags + projects), tag/project/month filters (click a
    month bar, a tag, or a project), a timeline grouped by month, and trend
-   charts — live from the database, refreshed every few seconds. `report`
+   charts — live from the database, refreshed every few seconds. Feed
+   cards show a short summary; "Learn more" opens a per-lesson page with
+   what went wrong, the root cause, and how it was fixed (deep-linkable
+   `#/lesson/<id>`, works in the snapshot too). `report`
    produces the same page as a single portable HTML file with the data
    inlined: double-click it, no server needed. In-session, `/afterwit:serve`
    starts the same dashboard in the background (it stops when the session

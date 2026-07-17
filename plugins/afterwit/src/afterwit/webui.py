@@ -74,10 +74,12 @@ a{color:var(--accent)}
   background:var(--wash);border:1px solid var(--line);border-radius:999px;padding:3px 10px;
   white-space:nowrap}
 .badge .pulse{width:7px;height:7px;border-radius:50%;background:var(--accent);display:inline-block}
-.searchrow{padding:0 0 16px}
-.searchrow input{width:100%;max-width:520px;padding:9px 14px;font:14px var(--font-body);
+.masthead .searchrow{padding:0 20px 16px;display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap}
+.searchrow input{flex:1 1 240px;max-width:520px;padding:9px 14px;font:14px var(--font-body);
   color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px}
 .searchrow input::placeholder{color:var(--muted)}
+.quickfilters{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.qfsep{width:1px;height:14px;background:var(--line)}
 .snapshot-note{font-family:var(--font-mono);font-size:11px;color:var(--muted);
   border:1px dashed var(--line);border-radius:6px;padding:2px 8px}
 
@@ -152,12 +154,20 @@ svg text{font-family:var(--font-mono);font-size:10px;fill:var(--muted)}
 .conf .v{font-family:var(--font-mono);font-size:10.5px;color:var(--muted);
   font-variant-numeric:tabular-nums}
 .card .lesson{margin:0;max-width:68ch}
-.card details{margin-top:9px;border-top:1px dashed var(--line);padding-top:8px}
-.card summary{cursor:pointer;font-size:12px;color:var(--muted);user-select:none}
-.card summary:hover{color:var(--accent)}
-.fieldrow{margin:8px 0 0}
-.fieldrow .k{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
-.fieldrow .t{margin:2px 0 0;font-size:13.5px;max-width:68ch}
+.card .more{display:inline-block;margin-top:8px;font-size:12.5px;text-decoration:none}
+.card .more:hover{text-decoration:underline}
+
+/* ---------- lesson detail page ---------- */
+.backlink{display:inline-block;margin:18px 0 12px;font-size:13px;text-decoration:none}
+.backlink:hover{text-decoration:underline}
+.detail h1{margin:0 0 8px;font-family:var(--font-display);font-size:26px;line-height:1.25;
+  font-weight:600;text-wrap:balance}
+.dsection{margin-top:14px;border-top:1px dashed var(--line);padding-top:10px}
+.dsection h2{margin:0 0 4px;font-size:11px;font-weight:600;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.08em}
+.dsection p{margin:0;max-width:72ch;font-size:14.5px;white-space:pre-wrap}
+.dfoot{margin-top:16px;color:var(--muted);font-family:var(--font-mono);font-size:11px;
+  display:flex;flex-wrap:wrap;gap:6px 16px}
 .empty{border:1px dashed var(--line);border-radius:10px;padding:36px;text-align:center;
   color:var(--muted)}
 .empty .big{font-family:var(--font-display);font-size:19px;font-style:italic;color:var(--ink)}
@@ -180,13 +190,14 @@ footer code{font-family:var(--font-mono);font-size:11px}
     <div class="tagline">wisdom after the event, filed for the next one</div>
     <span class="badge" id="mode-badge"><span class="pulse"></span><span id="mode-text">100% local</span></span>
   </div>
-  <div class="wrap searchrow">
+  <div class="wrap searchrow" id="searchrow">
     <input id="q" type="search" placeholder="Search lessons — title, problem, resolution, tags…"
       aria-label="Search lessons">
+    <div class="quickfilters" id="quickfilters" aria-label="Quick filters"></div>
   </div>
 </header>
 
-<div class="wrap">
+<div class="wrap" id="home">
   <section class="tiles" id="tiles" aria-label="Summary"></section>
   <section class="trends">
     <div class="chart-card">
@@ -206,6 +217,8 @@ footer code{font-family:var(--font-mono);font-size:11px}
     <section id="feed" aria-live="polite"></section>
   </div>
 </div>
+
+<main class="wrap detail" id="detail" hidden></main>
 
 <footer><div class="wrap">
   <span>afterwit v$VERSION</span>
@@ -390,17 +403,48 @@ function renderProjects() {
   });
 }
 
+/* ---------- quick filters (beside the search bar) ---------- */
+function renderQuickFilters() {
+  var host = byId("quickfilters"); host.textContent = "";
+  var tcounts = {}, pcounts = {};
+  state.data.lessons.forEach(function (l) {
+    (l.tags || []).forEach(function (t) { tcounts[t] = (tcounts[t] || 0) + 1; });
+    var p = l.project || "unknown"; pcounts[p] = (pcounts[p] || 0) + 1;
+  });
+  var bySize = function (counts) {
+    return function (a, b) { return counts[b] - counts[a] || (a < b ? -1 : 1); };
+  };
+  var tags = Object.keys(tcounts).sort(bySize(tcounts)).slice(0, 5);
+  var projects = Object.keys(pcounts).sort(bySize(pcounts));
+  tags.forEach(function (t) {
+    var c = el("button", "chip", "#" + t);
+    c.setAttribute("data-fkey", "qf-tag:" + t);
+    c.setAttribute("aria-pressed", state.tag === t ? "true" : "false");
+    c.addEventListener("click", function () { state.tag = state.tag === t ? null : t; render(); });
+    host.appendChild(c);
+  });
+  if (tags.length && projects.length) host.appendChild(el("span", "qfsep"));
+  projects.forEach(function (p) {
+    var c = el("button", "chip", p);
+    c.setAttribute("data-fkey", "qf-proj:" + p);
+    c.setAttribute("aria-pressed", state.project === p ? "true" : "false");
+    c.addEventListener("click", function () { state.project = state.project === p ? null : p; render(); });
+    host.appendChild(c);
+  });
+}
+
 /* ---------- feed ---------- */
 function monthName(k) {
   var names = ["January","February","March","April","May","June","July",
                "August","September","October","November","December"];
   return names[+k.slice(5, 7) - 1] + " " + k.slice(0, 4);
 }
-function fieldRow(label, text) {
-  var d = el("div", "fieldrow");
-  d.appendChild(el("div", "k", label));
-  d.appendChild(el("p", "t", text));
-  return d;
+function excerpt(text, n) {
+  text = String(text || "");
+  if (text.length <= n) return text;
+  var cut = text.slice(0, n);
+  var sp = cut.lastIndexOf(" ");
+  return (sp > n * 0.6 ? cut.slice(0, sp) : cut) + "…";
 }
 function renderFeed(lessons) {
   var feed = byId("feed"); feed.textContent = "";
@@ -448,15 +492,11 @@ function renderFeed(lessons) {
       meta.appendChild(conf);
     }
     card.appendChild(meta);
-    card.appendChild(el("p", "lesson", l.lesson));
-    if (l.problem || l.root_cause || l.resolution) {
-      var det = el("details");
-      det.appendChild(el("summary", "", "problem · root cause · resolution"));
-      if (l.problem) det.appendChild(fieldRow("Problem", l.problem));
-      if (l.root_cause) det.appendChild(fieldRow("Root cause", l.root_cause));
-      if (l.resolution) det.appendChild(fieldRow("Resolution", l.resolution));
-      card.appendChild(det);
-    }
+    card.appendChild(el("p", "lesson", excerpt(l.lesson, 200)));
+    var more = el("a", "more", "Learn more →");
+    more.href = "#/lesson/" + l.id;
+    more.setAttribute("aria-label", "Learn more: " + l.title);
+    card.appendChild(more);
     feed.appendChild(card);
   });
 }
@@ -469,13 +509,80 @@ function tip(ev, text) {
 }
 function hideTip() { byId("tip").style.display = "none"; }
 
+/* ---------- lesson detail page (hash route, works in serve AND report) ---------- */
+function route() {
+  var m = (location.hash || "").match(/^#\/lesson\/(\d+)/);
+  return m ? { view: "lesson", id: +m[1] } : { view: "home" };
+}
+function dSection(label, text) {
+  var d = el("div", "dsection");
+  d.appendChild(el("h2", "", label));
+  d.appendChild(el("p", "", text));
+  return d;
+}
+function renderDetail(id) {
+  var host = byId("detail"); host.textContent = "";
+  var back = el("a", "backlink", "← All lessons");
+  back.href = "#/";
+  host.appendChild(back);
+  var l = null;
+  state.data.lessons.forEach(function (x) { if (x.id === id) l = x; });
+  if (!l) {
+    var em = el("div", "empty");
+    em.appendChild(el("div", "big", "Lesson not found."));
+    em.appendChild(el("div", "", "It may have been deleted, or the link is stale."));
+    host.appendChild(em);
+    return;
+  }
+  document.title = l.title + " — Afterwit";
+  var art = el("article", "card");
+  art.appendChild(el("h1", "", l.title));
+  var meta = el("div", "meta");
+  meta.appendChild(el("span", "proj", l.project || "unknown"));
+  meta.appendChild(el("span", "date", (l.source_ts || l.created_at || "").slice(0, 10)));
+  (l.tags || []).forEach(function (t) {
+    var c = el("button", "chip", "#" + t);
+    c.title = "show all #" + t + " lessons";
+    c.addEventListener("click", function () { state.tag = t; location.hash = "#/"; });
+    meta.appendChild(c);
+  });
+  if (typeof l.confidence === "number") {
+    var conf = el("span", "conf");
+    conf.title = "model confidence this lesson is reusable";
+    var bar = el("span", "bar"); var fill = el("i");
+    fill.style.width = Math.round(l.confidence * 100) + "%";
+    bar.appendChild(fill); conf.appendChild(bar);
+    conf.appendChild(el("span", "v", Math.round(l.confidence * 100) + "%"));
+    meta.appendChild(conf);
+  }
+  art.appendChild(meta);
+  art.appendChild(dSection("Lesson", l.lesson));
+  if (l.problem) art.appendChild(dSection("What went wrong", l.problem));
+  if (l.root_cause) art.appendChild(dSection("Root cause", l.root_cause));
+  if (l.resolution) art.appendChild(dSection("How it was fixed", l.resolution));
+  var foot = el("div", "dfoot");
+  foot.appendChild(el("span", "", "recorded " + (l.created_at || "").slice(0, 10)));
+  if (l.session_id) foot.appendChild(el("span", "", "session " + l.session_id));
+  foot.appendChild(el("span", "", "lesson #" + l.id));
+  art.appendChild(foot);
+  host.appendChild(art);
+}
+
 /* ---------- render root ---------- */
 function render() {
   if (!state.data) return;
   hideTip(); /* the hovered mark may not survive the rebuild */
+  var r = route();
+  var isHome = r.view === "home";
+  byId("home").hidden = !isHome;
+  byId("detail").hidden = isHome;
+  byId("searchrow").style.display = isHome ? "" : "none";
+  if (!isHome) { renderDetail(r.id); return; }
+  document.title = "Afterwit — lessons learned";
   var fkey = document.activeElement && document.activeElement.getAttribute
     ? document.activeElement.getAttribute("data-fkey") : null;
   var lessons = visibleLessons();
+  renderQuickFilters();
   renderTiles(lessons);
   renderMonths(lessons);
   renderTags(lessons);
@@ -498,6 +605,7 @@ function setData(data) {
   if (changed) render();
 }
 
+window.addEventListener("hashchange", render);
 byId("q").addEventListener("input", function () { state.q = this.value.trim(); render(); });
 byId("clear").addEventListener("click", function () {
   state.q = ""; state.project = null; state.tag = null; state.month = null; byId("q").value = ""; render();

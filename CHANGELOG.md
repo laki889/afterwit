@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Dashboard: quick filter chips beside the search bar (5 most popular
+  tags + all projects), shorter lesson summaries in the feed, and a
+  per-lesson detail page — lesson, what went wrong, root cause, and how
+  it was fixed — on a deep-linkable client-side route (`#/lesson/<id>`)
+  that works in both `serve` and the `report` snapshot.
 - `/afterwit:serve` slash command: opens the local dashboard from inside a
   session (background server, browser auto-open; stops when the session
   ends — use `afterwit serve` in a terminal for a persistent one).
