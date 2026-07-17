@@ -53,9 +53,10 @@ That's it — no config, no accounts, no setup. The hooks and database
 initialize themselves.
 
 Already have session history on this machine? Capture normally starts with
-the first session that ends *after* install, but `afterwit backfill` queues
-your existing sessions too (newest-first, 10 by default; `--limit N`,
-`--days N`, `--project X`, `--dry-run`). Run it soon after installing and
+the first session that ends *after* install, but `afterwit backfill` (or
+`/afterwit:backfill` in-session) queues your existing sessions too
+(newest-first, 10 by default; `--limit N`, `--days N`, `--project X`,
+`--dry-run`). Run it soon after installing and
 follow with `afterwit sync` — Claude Code purges old transcripts on its own
 retention schedule (~30 days).
 

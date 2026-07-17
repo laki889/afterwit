@@ -2,9 +2,10 @@
 
 ## Unreleased
 
-- `afterwit backfill`: queue sessions that predate the install from Claude
-  Code's own transcript store (newest-first, 10 by default; `--limit`,
-  `--days`, `--project`, `--dry-run`). Recovers project/cwd from the
+- `afterwit backfill` (and the `/afterwit:backfill` slash command): queue
+  sessions that predate the install from Claude Code's own transcript store
+  (newest-first, 10 by default; `--limit`, `--days`, `--project`,
+  `--dry-run`). Recovers project/cwd from the
   transcript itself, skips already-queued/processed sessions (idempotent),
   live sessions, extraction runs, subagent sidecars, and sessions below
   sync's triviality bar.
