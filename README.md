@@ -30,6 +30,9 @@ makes sure it arrives **before** the next one.
 
 - **Compounding memory.** Every session makes the next one smarter. Lessons are
   kept forever, even as Claude Code purges the transcripts they came from.
+- **Reflect and improve.** A built-in dashboard to review what you've learned,
+  spot recurring patterns in how you work, and watch your growth over time — a
+  mirror on your progress, not just a store for it.
 - **Zero friction.** Install it and keep working. Capture is automatic;
   distillation is one command (or a scheduled job); resurfacing needs nothing
   at all.
@@ -123,8 +126,9 @@ distilled.
    /afterwit:sync           # or as a slash command
    ```
 3. **New sessions open with your recent lessons.** A short "lessons from your
-   past sessions" block is injected automatically at the start of each fresh
-   session — nothing to run.
+   past sessions" block is injected automatically into Claude's context at the
+   start of each fresh session — silently, so it never clutters your chat: only
+   Claude sees the lessons, and there's nothing for you to run.
 4. **Browse and search from the CLI:**
    ```
    afterwit list            # newest lessons
@@ -133,22 +137,8 @@ distilled.
    afterwit queue           # sessions waiting for sync
    afterwit delete <id>     # lessons are never auto-deleted; this is manual
    ```
-5. **Browse the full history visually:**
-   ```
-   afterwit serve           # local dashboard at http://127.0.0.1:8377
-   afterwit report          # write lessons.html — a self-contained snapshot
-   ```
-   The dashboard offers full-text search, quick filter chips beside the search
-   bar (top tags + projects), tag/project/month filters (click a month bar, a
-   tag, or a project), a timeline grouped by month, and trend charts — live
-   from the database, refreshed every few seconds. Feed cards show a short
-   summary; "Learn more" opens a per-lesson page with what went wrong, the root
-   cause, and how it was fixed (deep-linkable `#/lesson/<id>`, works in the
-   snapshot too). `afterwit report` produces that same page as a single
-   portable HTML file with the data inlined — double-click it, no server
-   needed. In-session, `/afterwit:serve` starts the same dashboard in the
-   background (it stops when the session ends; use `afterwit serve` in a
-   terminal for a persistent one).
+   For a visual way to review and reflect on everything you've learned, see
+   [the dashboard](#reflect-on-your-progress-the-dashboard) below.
 
 ### Ask Claude directly
 
@@ -176,6 +166,38 @@ per-version hash, so resolve it with a glob:
 
 Or clone this repo anywhere and run `plugins/afterwit/bin/afterwit` from the
 checkout — every copy of the CLI reads the same database.
+
+## Reflect on your progress: the dashboard
+
+Capturing lessons is only half the value — the other half is stepping back to
+see what they add up to. Afterwit ships a local web dashboard that turns your
+lessons database into a space for reflection: review what you've learned, spot
+patterns in how you work, and watch your growth accumulate over time.
+
+```
+afterwit serve           # local dashboard at http://127.0.0.1:8377
+```
+
+- **Revisit what you've learned.** Full-text search and quick filter chips
+  (your top tags and projects, right beside the search bar) surface everything
+  you've learned on a topic in seconds. Tag, project, and month filters — click
+  a month bar, a tag, or a project — let you trace how your understanding of an
+  area evolved over time.
+- **See the patterns in how you work.** A timeline grouped by month and trend
+  charts — live from the database, refreshed every few seconds — reveal the
+  shape of your development: which topics keep recurring, how steadily you're
+  turning experience into lessons, and where your growth is concentrated.
+- **Sit with a single insight.** Feed cards show a short summary; "Learn more"
+  opens a per-lesson page laying out what went wrong, the root cause, and how
+  you fixed it (deep-linkable at `#/lesson/<id>`) — so a hard-won insight
+  actually sticks instead of scrolling past.
+
+Want a snapshot to keep, read offline, or look back on later? `afterwit report`
+writes that same page as a single portable, self-contained HTML file with the
+data inlined — double-click it, no server needed (`#/lesson/<id>` deep links
+work there too). And in-session, `/afterwit:serve` starts the dashboard in the
+background (it stops when the session ends; use `afterwit serve` in a terminal
+for a persistent one).
 
 ## How it works
 
