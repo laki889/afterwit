@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.4.0 — 2026-07-18
+
 - Ollama backend hardening (max-privacy path now reliable end-to-end):
   requests use grammar-constrained JSON mode (`format: "json"`) and
   `temperature: 0`, so small local models stop wrapping the lesson array in

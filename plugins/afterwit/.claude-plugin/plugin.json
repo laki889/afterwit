@@ -1,7 +1,7 @@
 {
   "name": "afterwit",
   "displayName": "Afterwit",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Lessons learned from your own Claude Code sessions — automatic capture, local distillation, and in-session resurfacing. 100% local; nothing leaves your machine.",
   "author": {
     "name": "Lazar Trajkovic",
