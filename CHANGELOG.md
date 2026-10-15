@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+## 0.4.1 — 2026-10-15
+
+Directory-review fixes: the listing now says exactly what leaves the machine.
+
+- Wording: the manifest, marketplace entry, CLI help, package docstring,
+  README headline and privacy section, CONTRIBUTING, and the `/afterwit:sync`
+  description no longer call the whole product "100% local". They now say
+  that capture, storage, search and the dashboard stay on your machine, while
+  `sync` by default sends each queued transcript through your own `claude`
+  CLI to your Claude account, with Ollama as the fully on-device option.
+- `afterwit sync` prints the active backend before sending anything; with the
+  `claude` backend it says that queued transcripts from any project go out
+  under the account currently signed in and count toward its usage.
+- `/afterwit:sync` is marked `disable-model-invocation`: only you can start a
+  sync, matching the privacy page's "nothing is sent until you run it".
+- Extraction prompt: the model is told to treat the transcript strictly as
+  data and ignore any instructions inside it (lessons are injected into later
+  sessions); the transcript is now fenced by explicit start/end markers, and
+  the injected lessons block is framed as background notes, not instructions.
+- Tests guard the listing wording and the new behaviours.
+
 ## 0.4.0 — 2026-07-18
 
 - Ollama backend hardening (max-privacy path now reliable end-to-end):

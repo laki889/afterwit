@@ -1,6 +1,6 @@
 # Privacy Policy
 
-**Effective date: 2026-07-18**
+**Effective date: 2026-10-15**
 
 Afterwit is a local-first Claude Code plugin. It is built so that your
 development history — and the lessons distilled from it — never leave your
@@ -13,6 +13,12 @@ distillation step, and it goes to an AI backend that *you* choose — your own
 `claude` CLI (your existing account) or a local Ollama model on your own
 machine.
 
+With the default `claude` backend, the transcript being distilled therefore
+**does** leave your machine: it goes to the Claude account your CLI is signed in
+to, the same place your Claude Code sessions already go. Everything else —
+capture, storage, search, the MCP tools, and the dashboard — stays on your
+machine, and the Ollama backend keeps distillation there too.
+
 ## Summary
 
 | Question | Answer |
@@ -20,7 +26,7 @@ machine.
 | Does Afterwit run a remote backend or server? | No. |
 | Does it collect telemetry, analytics, or usage data? | No. |
 | Does the plugin itself phone home or call any external API? | No. |
-| Does any data leave my machine? | Only the transcript sent to the distillation backend *you* configure (your own `claude` CLI or a local Ollama model). Nothing else. |
+| Does any data leave my machine? | Only the transcript sent to the distillation backend *you* configure, and only when you run `afterwit sync`: by default through your own `claude` CLI to your Claude account; with Ollama, nothing leaves the machine. Nothing else. |
 | Where is my data stored? | In a plain SQLite file on your own machine, outside the plugin directory. |
 | Can I delete everything? | Yes — one directory removal wipes all Afterwit data. |
 
@@ -48,9 +54,11 @@ The single exception is the distillation step, which you invoke with
 sent to the inference backend you have configured:
 
 - **`claude` backend (default).** The transcript is passed to your own local
-  `claude` CLI, running under your existing Claude Code account. No new party
-  receives your data — it goes to the same service you are already using with
-  Claude Code.
+  `claude` CLI, which sends it to the Claude account the CLI is currently
+  signed in to — the same service you are already using with Claude Code, under
+  that account's terms. No new party receives your data, but it does leave your
+  machine. Queued transcripts from **every** project go out under that one
+  account, and each call counts toward its usage like any other session.
 - **`ollama` backend (maximum privacy).** The transcript is sent to a local
   Ollama server on your own machine, so nothing reaches Anthropic or any other
   external service. Afterwit validates that the Ollama URL is a loopback
@@ -60,6 +68,9 @@ sent to the inference backend you have configured:
 
 You control which backend is used via `config.json` (`"backend": "claude"` or
 `"ollama"`). No transcript is ever sent anywhere until you run `afterwit sync`.
+The `/afterwit:sync` slash command is marked `disable-model-invocation`, so
+Claude cannot start a sync on its own, and `sync` prints the active backend
+(and, for `claude`, the account-and-usage note above) before sending anything.
 
 ## Where your data is stored
 
@@ -99,6 +110,10 @@ Afterwit is designed to keep those out of your lessons:
 
 - The extraction prompt explicitly instructs the model **not** to copy secrets,
   API keys, tokens, passwords, or personal data into any lesson field.
+- The extraction prompt also tells the model to treat the transcript strictly
+  as data: instructions that appear inside a transcript are never followed and
+  never turned into lessons. This matters because lessons are injected into
+  later sessions.
 - Afterwit stores only the distilled lessons, not the underlying transcript.
 
 No automated filter is perfect. Before sharing lesson output anywhere (for

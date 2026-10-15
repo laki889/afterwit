@@ -1,7 +1,8 @@
 # Afterwit
 
 **Turn your Claude Code sessions into a permanent, searchable engineering
-logbook — automatically, and 100% on your machine.**
+logbook — captured automatically, stored on your machine, distilled by your
+own `claude` CLI or a local Ollama model.**
 
 [![tests](https://github.com/laki889/afterwit/actions/workflows/tests.yml/badge.svg)](https://github.com/laki889/afterwit/actions/workflows/tests.yml)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -15,9 +16,11 @@ Afterwit turns those sessions into a growing knowledge base in three stages:
 
 - **Capture** — when a session ends, it's queued instantly (no LLM call, no
   delay).
-- **Distill** — `afterwit sync` reads each queued transcript and extracts only
-  the genuinely reusable lessons: named patterns, root causes, fixes worth
-  repeating. Junk (typos, one-offs, noise) is filtered out.
+- **Distill** — `afterwit sync`, run when you choose, sends each queued
+  transcript to the AI backend you pick — your own `claude` CLI (your Claude
+  account) by default, or a local Ollama model — and keeps only the genuinely
+  reusable lessons: named patterns, root causes, fixes worth repeating. Junk
+  (typos, one-offs, noise) is filtered out.
 - **Resurface** — every new session quietly opens with your most relevant
   recent lessons already in context, so you *and* Claude actually apply them.
   A CLI, a web dashboard, and a bundled MCP server let you browse, search, and
@@ -36,17 +39,32 @@ makes sure it arrives **before** the next one.
 - **Zero friction.** Install it and keep working. Capture is automatic;
   distillation is one command (or a scheduled job); resurfacing needs nothing
   at all.
-- **Private by design.** No accounts, no servers, no telemetry — see below.
+- **Private by design.** No accounts, no servers, no telemetry, and you
+  choose where distillation runs — see below.
 - **No lock-in.** Your lessons are a plain SQLite file you own and can open
   with any tool.
 
-## Privacy: everything stays on your machine
+## Privacy: what stays on your machine, and what leaves it
 
-- **No remote backend, no telemetry, no analytics, no external API calls.** The
-  one and only outbound call is the distillation itself, and it goes to the AI
-  you already use: your own `claude` CLI (your existing account — no new party
-  sees your data) or, for maximum privacy, a **local Ollama model** (nothing
-  reaches Anthropic at all). The Ollama backend hard-refuses non-loopback URLs.
+- **Always on your machine:** capture (the SessionEnd hook only queues a file
+  path — no LLM call), the lessons database, search, the CLI, the MCP tools,
+  and the dashboard.
+- **What leaves it: the transcript being distilled, and only when you run
+  `sync`.** Afterwit has no remote backend, no telemetry, no analytics, and no
+  external API calls of its own. The one outbound path is the distillation
+  call, to the AI backend you choose:
+  - **`claude` (the default)** — each queued transcript, from any project, is
+    sent through your own `claude` CLI to the Claude account the CLI is
+    currently signed in to, under that account's terms; the calls count toward
+    its usage, like any other Claude Code session. No new party sees your data,
+    but it does leave your machine.
+  - **`ollama`** — the fully on-device option: a local model, with nothing
+    reaching Anthropic at all. The Ollama backend hard-refuses non-loopback
+    URLs and bypasses any configured proxy.
+
+  Nothing is sent until you run `sync` yourself — `/afterwit:sync` can't be
+  triggered by Claude on its own — and `sync` states the active backend before
+  it sends anything.
 - Lessons live in a plain SQLite file **outside the plugin directory**, so
   plugin updates and uninstalls never touch them.
 - Afterwit stores the distilled lessons, not raw transcripts, and the
@@ -266,7 +284,8 @@ queue is untouched — nothing is lost, but nothing is distilled either, so chec
 the job's output once after setting it up.
 
 **Claude Code Desktop** users can instead create a daily scheduled task
-("Routines" page) that runs `afterwit sync` — it executes locally.
+("Routines" page) that runs `afterwit sync` — the job runs on your machine
+and distills through whichever backend you configured.
 
 ## Configuration (optional)
 
@@ -276,7 +295,7 @@ comments are allowed. The full set, with defaults:
 
 | Key | Default | Meaning |
 |---|---|---|
-| `backend` | `"claude"` | Inference for `sync`: `"claude"` (your own CLI) or `"ollama"` (max privacy) |
+| `backend` | `"claude"` | Inference for `sync`: `"claude"` (your own CLI, i.e. your Claude account) or `"ollama"` (local model, fully on-device) |
 | `claude_model` | `null` | e.g. `"haiku"` to distill cheaply; `null` = your CLI's default model |
 | `claude_timeout` | `600` | seconds per `claude -p` call |
 | `ollama_url` | `"http://localhost:11434"` | must be loopback — anything else is refused |
@@ -382,7 +401,7 @@ output before sharing it anywhere.
 Everything is stdlib Python — no install step:
 
 ```
-python3 -m unittest discover -s tests        # 99 tests, ~6s
+python3 -m unittest discover -s tests        # 108 tests, ~7s
 AFTERWIT_DATA_DIR=$(mktemp -d) plugins/afterwit/bin/afterwit paths   # sandboxed run
 ```
 

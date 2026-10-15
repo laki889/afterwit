@@ -12,8 +12,10 @@ from typing import Any
 from . import paths
 
 DEFAULTS: dict[str, Any] = {
-    # Inference backend for `afterwit sync`: "claude" (the user's own claude
-    # CLI) or "ollama" (fully local; nothing reaches Anthropic).
+    # Inference backend for `afterwit sync`. "claude": each queued transcript
+    # is sent through the user's own claude CLI to the Claude account it is
+    # signed in to, and the call counts toward that account's usage.
+    # "ollama": a loopback-only local model — the fully on-device option.
     "backend": "claude",
     "claude_model": None,          # None → the CLI's default model
     "ollama_url": "http://localhost:11434",

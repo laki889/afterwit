@@ -9,7 +9,7 @@
     {
       "name": "afterwit",
       "source": "./plugins/afterwit",
-      "description": "Lessons learned from your own Claude Code sessions — automatic capture, local distillation, in-session resurfacing. 100% local.",
+      "description": "Lessons learned from your own Claude Code sessions — automatic capture, distillation, and in-session resurfacing. Capture, storage, search, and the dashboard stay on your machine. Distillation runs only when you invoke sync; by default it sends each queued transcript through your own claude CLI to your Claude account, and a local Ollama model is the fully on-device option.",
       "author": {
         "name": "Lazar Trajkovic",
         "email": "lazartrajkovic1989@gmail.com"

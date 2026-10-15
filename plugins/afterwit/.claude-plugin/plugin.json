@@ -1,8 +1,8 @@
 {
   "name": "afterwit",
   "displayName": "Afterwit",
-  "version": "0.4.0",
-  "description": "Lessons learned from your own Claude Code sessions — automatic capture, local distillation, and in-session resurfacing. 100% local; nothing leaves your machine.",
+  "version": "0.4.1",
+  "description": "Lessons learned from your own Claude Code sessions — automatic capture, distillation, and in-session resurfacing. Capture, storage, search, and the dashboard stay on your machine. Distillation runs only when you invoke sync; by default it sends each queued transcript through your own claude CLI to your Claude account, and a local Ollama model is the fully on-device option.",
   "author": {
     "name": "Lazar Trajkovic",
     "email": "lazartrajkovic1989@gmail.com"
@@ -10,6 +10,9 @@
   "homepage": "https://github.com/laki889/afterwit",
   "repository": "https://github.com/laki889/afterwit",
   "license": "MIT",
+  "documentationUrl": "https://github.com/laki889/afterwit#readme",
+  "supportUrl": "https://github.com/laki889/afterwit/issues",
+  "privacyPolicyUrl": "https://github.com/laki889/afterwit/blob/main/PRIVACY.md",
   "keywords": [
     "lessons-learned",
     "self-reflection",

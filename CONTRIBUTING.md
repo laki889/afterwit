@@ -5,7 +5,9 @@ project's design goals.
 
 ## Ground rules (the privacy contract)
 
-Afterwit's promise is "100% local, read every line." Changes must preserve:
+Afterwit's promise is "your data stays on your machine, except for the one
+distillation call you choose and trigger yourself — and you can read every
+line." Changes must preserve:
 
 1. **No new network egress.** The only outbound call is the distillation
    itself, to the user's own `claude` CLI or a loopback-validated Ollama.
@@ -21,6 +23,11 @@ Afterwit's promise is "100% local, read every line." Changes must preserve:
 5. **User data outlives the plugin.** Nothing under `${CLAUDE_PLUGIN_ROOT}`
    may store state; everything lives in the `paths.data_dir()` tree.
    Lessons are never deleted except by explicit `afterwit delete`.
+6. **Listing claims match behaviour.** Wording that describes the whole
+   product or the sync step must say that the default backend sends each
+   transcript to the user's Claude account, with Ollama as the on-device
+   option; `tests/test_listing_claims.py` guards the manifest, marketplace
+   entry, CLI help, docstring, README headline and `/afterwit:sync`.
 
 ## Working on it
 

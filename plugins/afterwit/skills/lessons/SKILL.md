@@ -7,7 +7,8 @@ user-invocable: true
 # Afterwit lessons database
 
 This machine keeps a local SQLite database of distilled "lessons learned"
-from the developer's past Claude Code sessions. It is 100% local.
+from the developer's past Claude Code sessions. Reading it is entirely
+local and read-only.
 
 ## How to query it
 

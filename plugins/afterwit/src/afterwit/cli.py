@@ -167,7 +167,12 @@ def main(argv: list[str] | None = None) -> None:
                 pass
     ap = argparse.ArgumentParser(
         prog="afterwit",
-        description="Lessons learned from your own Claude Code sessions — 100% local.",
+        description=(
+            "Lessons learned from your own Claude Code sessions. Capture, storage, "
+            "search, and the dashboard stay on your machine; `sync` sends each queued "
+            "transcript to your own claude CLI (your Claude account) by default, or "
+            "to a local Ollama model."
+        ),
     )
     ap.add_argument("--version", action="version", version=f"afterwit {__version__}")
     sub = ap.add_subparsers(dest="command", required=True)
@@ -182,8 +187,14 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--dry-run", action="store_true", help="show what would be queued")
     p.set_defaults(func=cmd_backfill)
 
-    p = sub.add_parser("sync", help="distill queued sessions into lessons")
-    p.add_argument("--backend", choices=["claude", "ollama"], help="inference backend")
+    p = sub.add_parser(
+        "sync",
+        help="distill queued sessions into lessons (sends each transcript to your "
+             "claude CLI by default, or to a local Ollama model)",
+    )
+    p.add_argument("--backend", choices=["claude", "ollama"],
+                   help="claude: your own CLI, i.e. your Claude account (default); "
+                        "ollama: local model, fully on-device")
     p.add_argument("--project", help="only sessions from this project")
     p.add_argument("--since", help="only sessions enqueued on/after this ISO date")
     p.add_argument("--limit", type=int, help="process at most N sessions")

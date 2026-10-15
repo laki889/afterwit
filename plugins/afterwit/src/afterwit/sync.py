@@ -87,6 +87,9 @@ def _run_locked(
     if not todo:
         print("afterwit sync: queue is empty — nothing to do.", file=out)
         return summary
+    # Say where the transcripts are about to go BEFORE anything is sent —
+    # the directory listing promises exactly this disclosure.
+    print(_backend_notice(backend_name, cfg, todo, dry_run), file=out)
 
     conn = store.connect()
     done_ids: set[str] = set()
@@ -203,6 +206,25 @@ def _run_locked(
         file=out,
     )
     return summary
+
+
+def _backend_notice(backend_name: str, cfg: dict, todo: list, dry_run: bool) -> str:
+    """One line naming the active backend and, for `claude`, the fact that
+    every queued transcript (whatever project it came from) goes out under
+    the account the CLI is signed in to and counts toward its usage."""
+    projects = {str(r.get("project") or "?") for r in todo}
+    aux = "would" if dry_run else "will"
+    if backend_name == "claude":
+        return (
+            f"afterwit sync: backend = claude (your own `claude` CLI). Up to {len(todo)} "
+            f"queued session(s) from {len(projects)} project(s) {aux} be sent to the "
+            f"Claude account the CLI is currently signed in to, and {aux} count toward "
+            "its usage. For fully on-device distillation use `--backend ollama`."
+        )
+    return (
+        f"afterwit sync: backend = ollama (local model '{cfg.get('ollama_model', 'llama3.1')}' "
+        f"at {cfg.get('ollama_url', 'http://localhost:11434')}); transcripts stay on this machine."
+    )
 
 
 def _note_failure(rec, updated, done_ids, conn, out, label, msg, summary, dry_run):
