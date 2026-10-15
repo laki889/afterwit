@@ -21,7 +21,14 @@ Directory-review fixes: the listing now says exactly what leaves the machine.
   data and ignore any instructions inside it (lessons are injected into later
   sessions); the transcript is now fenced by explicit start/end markers, and
   the injected lessons block is framed as background notes, not instructions.
-- Tests guard the listing wording and the new behaviours.
+- Hooks: each hook command is now a plain shell launcher
+  (`hooks/session_end.sh`, `hooks/session_start.sh`) that the directory
+  validator can follow. The inline `python3 -c ""` interpreter probe in
+  `hooks.json` was refused as an unreadable inline program; the launchers
+  probe with `--version` instead, which the Microsoft-Store alias stub
+  still fails. Behaviour is unchanged.
+- Tests guard the listing wording, the hook launchers, and the new
+  behaviours.
 
 ## 0.4.0 — 2026-07-18
 
