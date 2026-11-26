@@ -18,6 +18,13 @@ jobs:
           # no 3.9 builds for the Apple-silicon macos-latest runners
           - os: macos-latest
             python: "3.9"
+          # nor for Ubuntu 26.04, which ubuntu-latest now points at
+          - os: ubuntu-latest
+            python: "3.9"
+        include:
+          # keep the 3.9 floor tested on Linux, on the newest image that has it
+          - os: ubuntu-24.04
+            python: "3.9"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
