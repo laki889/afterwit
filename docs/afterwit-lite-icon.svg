@@ -1,21 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#101B33"/>
-      <stop offset="1" stop-color="#070C18"/>
-    </linearGradient>
-    <linearGradient id="bolt" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#7DD3FC"/>
-      <stop offset="1" stop-color="#3B82F6"/>
-    </linearGradient>
-  </defs>
-  <rect width="1024" height="1024" fill="url(#bg)"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 1024 1024">
+  <rect width="1024" height="1024" fill="#0B121F"/>
   <!-- the page: lessons written down -->
   <path d="M 336 212 H 612 L 742 342 V 772 a 44 44 0 0 1 -44 44 H 336 a 44 44 0 0 1 -44 -44 V 256 a 44 44 0 0 1 44 -44 Z"
-        fill="#0E1830" stroke="#33507F" stroke-width="34" stroke-linejoin="round"/>
+        fill="#0F1A31" stroke="#35548A" stroke-width="34" stroke-linejoin="round"/>
   <path d="M 612 212 V 298 a 44 44 0 0 0 44 44 H 742"
-        fill="none" stroke="#33507F" stroke-width="34" stroke-linejoin="round" stroke-linecap="round"/>
+        fill="none" stroke="#35548A" stroke-width="34" stroke-linejoin="round" stroke-linecap="round"/>
   <!-- the flash of afterwit -->
   <path d="M 548 356 L 408 568 H 498 L 470 716 L 620 496 H 528 Z"
-        fill="url(#bolt)" stroke="url(#bolt)" stroke-width="22" stroke-linejoin="round"/>
+        fill="#5BB4FF" stroke="#5BB4FF" stroke-width="22" stroke-linejoin="round"/>
 </svg>

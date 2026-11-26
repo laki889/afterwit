@@ -119,6 +119,21 @@ class ShippedFilesTestCase(unittest.TestCase):
             pos += 12 + length
         self.assertLessEqual(set(kinds), {"IHDR", "sRGB", "PLTE", "IDAT", "IEND"}, kinds)
 
+    def test_icon_bytes_hold_almost_no_printable_text(self):
+        # The directory screens the printable text inside image files for
+        # shell patterns, and ordinary compressed pixel data trips it by
+        # accident ("Contains a download-and-run command"). The icon is
+        # therefore written by tools/make_plugin_icon.py as indexed colour in
+        # stored deflate blocks, which leaves little more than the chunk
+        # names and the palette readable.
+        data = (LITE / ".claude-plugin" / "icon.png").read_bytes()
+        printable = "".join(chr(b) for b in data if 0x20 <= b <= 0x7E)
+        self.assertLess(len(printable), 200, "re-export with tools/make_plugin_icon.py")
+        low = printable.lower()
+        for token in ("sh", "iex", "iwr", "irm", "curl", "wget", "eval", "exec",
+                      "http", "ftp", "$(", "|"):
+            self.assertNotIn(token, low, f"icon bytes spell {token!r}")
+
     def test_original_plugin_is_a_separate_folder(self):
         # The lite edition must never reach into, or depend on, the full one.
         for path in _files():
