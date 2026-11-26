@@ -97,6 +97,36 @@ remote): `/plugin marketplace add /path/to/afterwit`, then the same install
 command. After pulling updates, run `/plugin marketplace update afterwit` and
 `/plugin update afterwit@afterwit`.
 
+### Check before you install
+
+Afterwit isn't in a curated directory, so nobody has vetted it for you. It is
+small enough to check yourself:
+
+- **See what gets installed.** `/plugin install` opens a details pane listing
+  the commands, skills, hooks and MCP server before you confirm anything.
+- **Pin a release.** `/plugin marketplace add laki889/afterwit#v0.4.1` gives
+  you exactly that tagged version. Claude Code doesn't auto-update third-party
+  marketplaces unless you turn that on, so you stay on what you reviewed.
+- **Read what runs without you asking.** Only three things do:
+
+  | File | Runs when | What it does |
+  |---|---|---|
+  | `hooks/session_end.sh` → `hooks/session_end.py` | a session ends | Appends one record to `queue.jsonl` in the data directory: session id, transcript path, working directory, project name, end reason, timestamp. It does not read the transcript. |
+  | `hooks/session_start.sh` → `hooks/session_start.py` | a session starts or is cleared | Opens the lessons database read-only and adds a few short lessons (4 by default, 10 at most) to Claude's context. Writes nothing. |
+  | `mcp/query_lessons.py` | Claude Code starts the `lessons` MCP server | Answers three read-only queries over the same database. Writes nothing. |
+
+  None of the three opens a network connection or starts another program.
+  This prints nothing:
+
+  ```sh
+  grep -n "urllib\|socket\|http\|subprocess" plugins/afterwit/hooks/*.py plugins/afterwit/mcp/*.py
+  ```
+
+Everything else runs only when you invoke it. `sync` is the one command that
+sends anything off your machine ([Privacy](#privacy-what-stays-on-your-machine-and-what-leaves-it)
+says what and where), and `serve` binds the dashboard to 127.0.0.1 only. To
+report a problem privately, see [SECURITY.md](SECURITY.md).
+
 ## First run: backfill your existing history
 
 Capture normally starts with the first session that ends *after* you install
