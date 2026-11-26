@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Docs: added `SECURITY.md` (how to report a vulnerability privately, and what
+  counts) and a "Check before you install" section in the README that lists
+  the three files that run automatically and how to pin a release.
+
 ## 0.4.1 — 2026-10-15
 
 Directory-review fixes: the listing now says exactly what leaves the machine.
