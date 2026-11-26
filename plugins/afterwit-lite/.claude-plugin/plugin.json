@@ -1,0 +1,19 @@
+{
+  "name": "afterwit-lite",
+  "displayName": "Afterwit Lite",
+  "version": "0.1.0",
+  "description": "A lessons-learned logbook for your project, written by Claude when you ask. At the end of a session, run reflect: Claude distills the reusable lessons into a Markdown file in your project, and checks that file before re-solving a problem you have already hit. Instructions only: no hooks, no scripts, no servers, and no data flow of its own.",
+  "author": {
+    "name": "Lazar Trajkovic"
+  },
+  "homepage": "https://github.com/laki889/afterwit",
+  "repository": "https://github.com/laki889/afterwit",
+  "license": "MIT",
+  "keywords": [
+    "lessons-learned",
+    "self-reflection",
+    "retrospective",
+    "memory",
+    "logbook"
+  ]
+}
