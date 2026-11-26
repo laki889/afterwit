@@ -112,6 +112,21 @@ class EnvironmentHandlingTestCase(unittest.TestCase):
             self.assertIsNone(re.search(r"\benv\s*=", text),
                               f"{path.name} passes an env to a child process")
 
+    def test_every_environment_variable_is_named_literally(self):
+        # The policy check flags "an environment variable named at run time"
+        # (os.environ[name] in a loop) as a possible credential read.
+        access = re.compile(r"os\.environ(?:\.get|\.pop|\.setdefault)?\s*[\[(]\s*([^\s])")
+        for path in PLUGIN.rglob("*.py"):
+            text = path.read_text(encoding="utf-8")
+            for m in access.finditer(text):
+                self.assertIn(m.group(1), "\"'",
+                              f"{path.name}: non-literal environment key near "
+                              f"{text[m.start():m.start() + 40]!r}")
+            self.assertNotRegex(text, r"\bin os\.environ\b(?<!\" in os\.environ)",
+                                f"{path.name}: membership test on a non-literal name")
+            self.assertNotIn("os.getenv(", text)
+            self.assertNotIn("os.environ.update(", text)
+
     def test_synth_does_not_touch_the_environment(self):
         text = (PLUGIN / "src" / "afterwit" / "synth.py").read_text(encoding="utf-8")
         self.assertNotIn("os.environ", text)

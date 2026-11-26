@@ -418,7 +418,7 @@ output before sharing it anywhere.
 Everything is stdlib Python — no install step:
 
 ```
-python3 -m unittest discover -s tests        # 124 tests, ~7s
+python3 -m unittest discover -s tests        # 125 tests, ~7s
 AFTERWIT_DATA_DIR=$(mktemp -d) plugins/afterwit/scripts/afterwit.sh paths   # sandboxed run
 ```
 
