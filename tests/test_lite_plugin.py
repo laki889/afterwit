@@ -98,6 +98,27 @@ class ShippedFilesTestCase(unittest.TestCase):
                 f".claude-plugin/{path.name} is not accepted there",
             )
 
+    def test_icon_meets_the_directory_requirements(self):
+        # The directory wants a square PNG, 512 to 2048 px a side, under 2 MB,
+        # and refuses an image that looks like it carries an archive.
+        import struct
+        data = (LITE / ".claude-plugin" / "icon.png").read_bytes()
+        self.assertTrue(data.startswith(b"\x89PNG\r\n\x1a\n"), "not a PNG")
+        width, height = struct.unpack(">II", data[16:24])
+        self.assertEqual(width, height, "icon must be square")
+        self.assertTrue(512 <= width <= 2048, width)
+        self.assertLess(len(data), 2 * 1024 * 1024)
+        self.assertTrue(data.endswith(b"IEND\xaeB`\x82"), "data after the image")
+        self.assertNotIn(b"PK\x03\x04", data)
+        self.assertNotIn(b"PK\x05\x06", data)
+        # only the chunks an image needs: no profiles, text or EXIF
+        kinds, pos = [], 8
+        while pos < len(data):
+            (length,) = struct.unpack(">I", data[pos:pos + 4])
+            kinds.append(data[pos + 4:pos + 8].decode("ascii"))
+            pos += 12 + length
+        self.assertLessEqual(set(kinds), {"IHDR", "sRGB", "PLTE", "IDAT", "IEND"}, kinds)
+
     def test_original_plugin_is_a_separate_folder(self):
         # The lite edition must never reach into, or depend on, the full one.
         for path in _files():
