@@ -1,18 +1,18 @@
 ---
 description: Review your recent lessons learned and reflect on patterns
-allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/afterwit" *)
+allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/scripts/afterwit.sh" *)
 ---
 
 Current lessons digest (read locally from the afterwit database):
 
 Recent lessons:
-!`"${CLAUDE_PLUGIN_ROOT}/bin/afterwit" list --limit 15 2>&1`
+!`"${CLAUDE_PLUGIN_ROOT}/scripts/afterwit.sh" list --limit 15 2>&1`
 
 Stats:
-!`"${CLAUDE_PLUGIN_ROOT}/bin/afterwit" stats 2>&1`
+!`"${CLAUDE_PLUGIN_ROOT}/scripts/afterwit.sh" stats 2>&1`
 
 Pending queue:
-!`"${CLAUDE_PLUGIN_ROOT}/bin/afterwit" queue 2>&1`
+!`"${CLAUDE_PLUGIN_ROOT}/scripts/afterwit.sh" queue 2>&1`
 
 Give the user a short reflective review of the digest above:
 1. The 2-3 most significant recurring themes (use the tags and titles).

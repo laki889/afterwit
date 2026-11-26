@@ -5,12 +5,16 @@ Network policy (hard constraint): the ONLY egress in this package is the
 inference call itself, to the user's own `claude` CLI (their existing
 account) or to a LOCAL Ollama server. The Ollama URL is validated to be
 loopback; anything else is refused.
+
+Credentials: this module reads none. It does not look at the environment at
+all; the `claude` CLI is started as an ordinary child process and handles its
+own sign-in (procenv.py holds everything the nested call does with the
+environment).
 """
 
 from __future__ import annotations
 
 import json
-import os
 import re
 import shutil
 import subprocess
@@ -18,6 +22,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from typing import Any
+
+from . import procenv
 
 EXTRACTION_PROMPT = """You are analyzing the transcript of one Claude Code development session (provided as input, between the lines "--- SESSION TRANSCRIPT ---" and "--- END OF SESSION TRANSCRIPT ---"). Extract only genuinely REUSABLE lessons: recurring mistakes, non-obvious gotchas, root causes of real problems, corrected misconceptions, and good decisions worth repeating — things that would change how this developer (or their AI assistant) works in FUTURE sessions.
 
@@ -71,25 +77,12 @@ class BackendUnavailable(BackendError):
 # ---------------------------------------------------------------------------
 # Backend: the user's own `claude` CLI (default)
 
-def _scrubbed_env() -> dict[str, str]:
-    """Environment for the nested `claude -p` call: drop the variables that
-    mark 'running inside a Claude Code session' (they confuse a nested CLI),
-    and set AFTERWIT_SYNC so our own SessionEnd hook ignores the run."""
-    env = {
-        k: v
-        for k, v in os.environ.items()
-        if k not in ("CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_SSE_PORT")
-    }
-    env["AFTERWIT_SYNC"] = "1"
-    return env
-
-
 def call_claude(prompt: str, transcript_text: str, cfg: dict[str, Any]) -> str:
     """Run `claude -p` headless with all tools disabled and return the model's
-    text. Uses the user's existing CLI auth — no new credentials, no new party.
-    Prompt AND transcript both go via stdin so nothing appears in process argv
-    (visible to `ps`)."""
-    binary = os.environ.get("AFTERWIT_CLAUDE_BIN", "claude")
+    text. The CLI signs itself in the way it always does; afterwit passes it
+    no credential and never sees one. Prompt AND transcript both go via stdin
+    so nothing appears in process argv (visible to `ps`)."""
+    binary = procenv.claude_binary()
     # shutil.which honors PATHEXT, so an npm-installed `claude.cmd` on
     # Windows resolves too (bare CreateProcess only finds .exe).
     cmd = [
@@ -102,17 +95,20 @@ def call_claude(prompt: str, transcript_text: str, cfg: dict[str, Any]) -> str:
         cmd += ["--model", str(cfg["claude_model"])]
     stdin_payload = build_payload(prompt, transcript_text)
     try:
-        proc = subprocess.run(
-            cmd,
-            input=stdin_payload,
-            capture_output=True,
-            # explicit: Windows would otherwise pipe in cp1252 and die on
-            # the first arrow/box-drawing character in a transcript
-            encoding="utf-8",
-            errors="replace",
-            timeout=int(cfg.get("claude_timeout", 600)),
-            env=_scrubbed_env(),
-        )
+        # The child inherits the environment the ordinary way; afterwit
+        # builds none for it. nested_cli() only hides the "inside a Claude
+        # Code session" markers and sets AFTERWIT_SYNC for this one call.
+        with procenv.nested_cli():
+            proc = subprocess.run(
+                cmd,
+                input=stdin_payload,
+                capture_output=True,
+                # explicit: Windows would otherwise pipe in cp1252 and die on
+                # the first arrow/box-drawing character in a transcript
+                encoding="utf-8",
+                errors="replace",
+                timeout=int(cfg.get("claude_timeout", 600)),
+            )
     except FileNotFoundError:
         raise BackendUnavailable(
             f"`{binary}` not found on PATH. Install Claude Code, set AFTERWIT_CLAUDE_BIN, "

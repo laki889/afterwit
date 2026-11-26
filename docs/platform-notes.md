@@ -51,10 +51,14 @@ relying on it for changes — these formats evolve.
 - stdout envelope: `{"type":"result","subtype":"success","is_error":bool,
   "result":"<text>","session_id":...,"usage":...}` — check `is_error` AND
   `subtype`.
-- `-p` sessions fire hooks; afterwit sets `AFTERWIT_SYNC=1` in the subprocess
-  env and its SessionEnd hook ignores runs where that's set (prevents
-  self-capture). It also scrubs `CLAUDECODE`, `CLAUDE_CODE_ENTRYPOINT`,
-  `CLAUDE_CODE_SSE_PORT` from the child env.
+- `-p` sessions fire hooks; afterwit sets `AFTERWIT_SYNC=1` for the duration
+  of the call and its SessionEnd hook ignores runs where that's set (prevents
+  self-capture). It also hides `CLAUDECODE`, `CLAUDE_CODE_ENTRYPOINT`,
+  `CLAUDE_CODE_SSE_PORT` for that call. The child inherits the environment the
+  ordinary way: afterwit never builds an env dict from `os.environ` and never
+  passes `env=` (`procenv.py`). The directory's policy check refuses code that
+  reads the user's environment wholesale and hands it to something that can
+  reach a server ("Uses a credential from the user's machine").
 
 ## Plugin & marketplace manifests
 
@@ -62,7 +66,13 @@ relying on it for changes — these formats evolve.
   required (kebab-case). `commands/`, `skills/`, `hooks/hooks.json`,
   `.mcp.json`, `bin/` are auto-discovered at the plugin root ("don't put
   components inside .claude-plugin/"). `bin/` is added to the Bash tool PATH
-  in sessions.
+  in sessions — but the community directory refuses a plugin that ships a
+  `bin/` directory unless the publisher is a Verified organization ("Ships
+  executable files"), so afterwit's CLI launcher lives in `scripts/` and is
+  called by full path.
+- Directory validator: an MCP server `command` must be a plain program name
+  with `${CLAUDE_PLUGIN_ROOT}/<file>` arguments. Any other variable in it
+  (the old `${AFTERWIT_PYTHON:-python3}`) leaves the server file unread.
 - `marketplace.json` at `<repo>/.claude-plugin/marketplace.json`; required:
   `name`, `owner{name}`, `plugins[]` (each: `name` + `source`; relative
   `"./plugins/afterwit"` resolves from the marketplace root). One repo can be

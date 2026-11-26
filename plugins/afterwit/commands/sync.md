@@ -2,13 +2,13 @@
 description: Distill queued Claude Code sessions into lessons (sends each transcript to your own claude CLI, or to a local Ollama model)
 argument-hint: "[--dry-run] [--project NAME] [--limit N] [--backend claude|ollama]"
 disable-model-invocation: true
-allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/afterwit" *)
+allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/scripts/afterwit.sh" *)
 ---
 
 Run the afterwit distillation pipeline over the queued sessions:
 
 ```
-"${CLAUDE_PLUGIN_ROOT}/bin/afterwit" sync $ARGUMENTS
+"${CLAUDE_PLUGIN_ROOT}/scripts/afterwit.sh" sync $ARGUMENTS
 ```
 
 Run it with the Bash tool (it may take a minute or two per session — it sends

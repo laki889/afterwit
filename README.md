@@ -140,14 +140,15 @@ distilled.
    automatically.
 2. **Distill whenever you like** (or [schedule it](#scheduling-sync)):
    ```
-   afterwit sync            # inside a session (the plugin's bin/ is on PATH)
-   /afterwit:sync           # or as a slash command
+   /afterwit:sync           # inside a session
+   afterwit sync            # from a terminal (see "Running the CLI" below)
    ```
 3. **New sessions open with your recent lessons.** A short "lessons from your
    past sessions" block is injected automatically into Claude's context at the
    start of each fresh session — silently, so it never clutters your chat: only
    Claude sees the lessons, and there's nothing for you to run.
-4. **Browse and search from the CLI:**
+4. **Browse and search from the CLI** (after the one-line setup in
+   [Running the CLI](#running-the-cli-outside-a-session)):
    ```
    afterwit list            # newest lessons
    afterwit search sqlite   # full-text search
@@ -174,16 +175,27 @@ Two slash commands and a skill round this out:
 
 ### Running the CLI outside a session
 
-Inside a session the plugin's `bin/` is on your PATH, so `afterwit …` just
-works. Outside one, call the installed CLI directly. The last path segment is a
-per-version hash, so resolve it with a glob:
+Inside a session, use the slash commands — they call the bundled CLI for you.
+The plugin ships no `bin/` directory, so nothing is added to your PATH; the CLI
+is a plain shell launcher at `scripts/afterwit.sh` inside the installed plugin.
+The last path segment of the install directory is a per-version hash, so
+resolve it with a glob:
 
 ```sh
-"$(ls -td ~/.claude/plugins/cache/afterwit/afterwit/*/ | head -1)bin/afterwit" stats
+"$(ls -td ~/.claude/plugins/cache/afterwit/afterwit/*/ | head -1)scripts/afterwit.sh" stats
 ```
 
-Or clone this repo anywhere and run `plugins/afterwit/bin/afterwit` from the
-checkout — every copy of the CLI reads the same database.
+To get the short `afterwit …` form used throughout this README, add this
+function to your shell profile (`~/.zshrc`, `~/.bashrc`):
+
+```sh
+afterwit() { "$(ls -td ~/.claude/plugins/cache/afterwit/afterwit/*/ | head -1)scripts/afterwit.sh" "$@"; }
+```
+
+Or clone this repo anywhere and run `plugins/afterwit/scripts/afterwit.sh` from
+the checkout — every copy of the CLI reads the same database. Call the launcher
+by its path rather than through a symlink: it finds the code relative to its
+own location.
 
 ## Reflect on your progress: the dashboard
 
@@ -262,7 +274,7 @@ repo — any copy of the CLI reads the same database).
   <key>Label</key><string>dev.afterwit.sync</string>
   <key>ProgramArguments</key><array>
     <string>/bin/sh</string><string>-c</string>
-    <string>export PATH="$HOME/.local/bin:/usr/local/bin:/opt/homebrew/bin:$PATH"; "$(ls -td "$HOME"/.claude/plugins/cache/afterwit/afterwit/*/ | head -1)bin/afterwit" sync</string>
+    <string>export PATH="$HOME/.local/bin:/usr/local/bin:/opt/homebrew/bin:$PATH"; "$(ls -td "$HOME"/.claude/plugins/cache/afterwit/afterwit/*/ | head -1)scripts/afterwit.sh" sync</string>
   </array>
   <key>StartCalendarInterval</key><dict>
     <key>Hour</key><integer>13</integer><key>Minute</key><integer>0</integer>
@@ -276,7 +288,7 @@ Then `launchctl load ~/Library/LaunchAgents/dev.afterwit.sync.plist`.
 containing the `claude` binary — find it with `which claude`):
 
 ```
-0 13 * * * PATH="$HOME/.local/bin:/usr/local/bin:/opt/homebrew/bin:$PATH" "$(ls -td "$HOME"/.claude/plugins/cache/afterwit/afterwit/*/ | head -1)bin/afterwit" sync
+0 13 * * * PATH="$HOME/.local/bin:/usr/local/bin:/opt/homebrew/bin:$PATH" "$(ls -td "$HOME"/.claude/plugins/cache/afterwit/afterwit/*/ | head -1)scripts/afterwit.sh" sync
 ```
 
 If `claude` isn't reachable from the job's PATH, sync aborts cleanly and the
@@ -356,10 +368,15 @@ hooks, and MCP server force UTF-8 on their pipes (Windows consoles default to
 cp1252), queue locking uses msvcrt byte-range locks, and an npm-installed
 `claude.cmd` resolves for `sync`. Data lives under `%LOCALAPPDATA%\afterwit`.
 
-One caveat: the bundled MCP server is spawned as `python3` by default (MCP
-config can't probe). If `/mcp` shows the `lessons` server failing, set the
-`AFTERWIT_PYTHON` environment variable to your interpreter (e.g. `python`) and
-restart Claude Code.
+Where sh isn't available (PowerShell, cmd), run the CLI's Python entry point
+directly: `python <plugin>\scripts\afterwit_cli.py stats`.
+
+One caveat: the bundled MCP server is spawned as `python3` (MCP config can't
+probe for an interpreter, and the plugin directory requires a plain command
+there). If `/mcp` shows the `lessons` server failing, `python3` isn't a real
+interpreter on your PATH — the Microsoft Store build of Python provides one.
+Only the three MCP tools depend on it: the slash commands, the hooks and the
+CLI keep working with plain `python`.
 
 ## Uninstall
 
@@ -401,8 +418,8 @@ output before sharing it anywhere.
 Everything is stdlib Python — no install step:
 
 ```
-python3 -m unittest discover -s tests        # 108 tests, ~7s
-AFTERWIT_DATA_DIR=$(mktemp -d) plugins/afterwit/bin/afterwit paths   # sandboxed run
+python3 -m unittest discover -s tests        # 124 tests, ~7s
+AFTERWIT_DATA_DIR=$(mktemp -d) plugins/afterwit/scripts/afterwit.sh paths   # sandboxed run
 ```
 
 `AFTERWIT_DATA_DIR` points every entry point (CLI, hooks, MCP server) at an

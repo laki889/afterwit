@@ -28,6 +28,12 @@ line." Changes must preserve:
    transcript to the user's Claude account, with Ollama as the on-device
    option; `tests/test_listing_claims.py` guards the manifest, marketplace
    entry, CLI help, docstring, README headline and `/afterwit:sync`.
+7. **Directory policy holds.** No `bin/` directory and no compiled or binary
+   files in the plugin; hook and MCP commands are literal
+   `${CLAUDE_PLUGIN_ROOT}/<file>` paths with no other variable; and no code
+   reads the environment wholesale or builds one for a child process (the
+   `claude` CLI simply inherits it). `tests/test_directory_policy.py` guards
+   all of it.
 
 ## Working on it
 

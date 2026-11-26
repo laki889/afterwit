@@ -1,5 +1,5 @@
-"""Cross-platform plumbing: the bin/afterwit sh-python polyglot launcher and
-the fcntl/msvcrt lock helpers in capture.py."""
+"""Cross-platform plumbing: the scripts/afterwit.sh CLI launcher, its Python
+entry point, and the fcntl/msvcrt lock helpers in capture.py."""
 
 import os
 import subprocess
@@ -12,32 +12,56 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "plugins" / "afterw
 
 from afterwit import capture  # noqa: E402
 
-BIN = Path(__file__).resolve().parents[1] / "plugins" / "afterwit" / "bin" / "afterwit"
+SCRIPTS = Path(__file__).resolve().parents[1] / "plugins" / "afterwit" / "scripts"
+LAUNCHER = SCRIPTS / "afterwit.sh"
+ENTRY = SCRIPTS / "afterwit_cli.py"
 
 
 class LauncherTestCase(unittest.TestCase):
-    def test_launcher_is_valid_python(self):
-        # The sh preamble lives inside a Python string literal — if the
-        # polyglot is ever broken, this compiles no more.
-        compile(BIN.read_text(encoding="utf-8"), str(BIN), "exec")
-
-    def test_launcher_runs_under_python_directly(self):
-        # `python <path>/afterwit` must work where sh doesn't (PowerShell).
-        proc = subprocess.run(
-            [sys.executable, str(BIN), "--version"],
-            capture_output=True, encoding="utf-8", timeout=30,
-        )
+    def _assert_version(self, proc):
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertIn("afterwit", proc.stdout)
+
+    def test_entry_point_runs_under_python_directly(self):
+        # `python <plugin>/scripts/afterwit_cli.py` must work where sh
+        # doesn't (PowerShell).
+        self._assert_version(subprocess.run(
+            [sys.executable, str(ENTRY), "--version"],
+            capture_output=True, encoding="utf-8", timeout=30,
+        ))
+
+    def test_launcher_is_a_plain_shell_script(self):
+        # The directory validator follows only plain shell: no polyglot, no
+        # inline program, no command substitution.
+        text = LAUNCHER.read_text(encoding="utf-8")
+        self.assertTrue(text.startswith("#!/bin/sh\n"))
+        code = "\n".join(l for l in text.splitlines() if not l.lstrip().startswith("#"))
+        self.assertNotIn(" -c ", code)
+        self.assertNotIn("$(", code)
+        self.assertNotIn("`", code)
+        self.assertIn('"$here/afterwit_cli.py" "$@"', code)
 
     @unittest.skipIf(os.name == "nt", "sh execution is POSIX/Git Bash only")
-    def test_launcher_runs_via_sh(self):
-        proc = subprocess.run(
-            ["sh", str(BIN), "--version"],
+    def test_launcher_runs_via_sh_from_any_directory(self):
+        with tempfile.TemporaryDirectory() as elsewhere:
+            for cwd, argv0 in (
+                (elsewhere, str(LAUNCHER)),          # absolute path
+                (str(SCRIPTS.parent), "scripts/afterwit.sh"),  # relative path
+                (str(SCRIPTS), "afterwit.sh"),       # bare name: no slash in $0
+            ):
+                with self.subTest(cwd=cwd, argv0=argv0):
+                    self._assert_version(subprocess.run(
+                        ["sh", argv0, "--version"], cwd=cwd,
+                        capture_output=True, encoding="utf-8", timeout=30,
+                    ))
+
+    @unittest.skipIf(os.name == "nt", "exec bits are POSIX only")
+    def test_launcher_is_executable(self):
+        self.assertTrue(os.access(LAUNCHER, os.X_OK))
+        self._assert_version(subprocess.run(
+            [str(LAUNCHER), "--version"],
             capture_output=True, encoding="utf-8", timeout=30,
-        )
-        self.assertEqual(proc.returncode, 0, proc.stderr)
-        self.assertIn("afterwit", proc.stdout)
+        ))
 
 
 class LockTestCase(unittest.TestCase):

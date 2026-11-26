@@ -1,14 +1,14 @@
 ---
 description: Queue Claude Code sessions from before afterwit was installed (first-install import)
 argument-hint: "[--limit N] [--days N] [--project X] [--dry-run]"
-allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/afterwit" *)
+allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/scripts/afterwit.sh" *)
 ---
 
 Queue pre-existing sessions from Claude Code's local transcript store (the
 newest 10 eligible by default):
 
 ```
-"${CLAUDE_PLUGIN_ROOT}/bin/afterwit" backfill $ARGUMENTS
+"${CLAUDE_PLUGIN_ROOT}/scripts/afterwit.sh" backfill $ARGUMENTS
 ```
 
 Run it with the Bash tool, then report the summary to the user: how many

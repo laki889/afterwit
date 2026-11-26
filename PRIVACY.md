@@ -59,6 +59,9 @@ sent to the inference backend you have configured:
   that account's terms. No new party receives your data, but it does leave your
   machine. Queued transcripts from **every** project go out under that one
   account, and each call counts toward its usage like any other session.
+  Afterwit never reads, stores or forwards your Claude sign-in or any other
+  credential: it starts the CLI as an ordinary program, and the CLI signs
+  itself in the way it does when you run it yourself.
 - **`ollama` backend (maximum privacy).** The transcript is sent to a local
   Ollama server on your own machine, so nothing reaches Anthropic or any other
   external service. Afterwit validates that the Ollama URL is a loopback

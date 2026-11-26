@@ -6,4 +6,4 @@ account) by default, or to a local Ollama model for fully on-device
 distillation.
 """
 
-__version__ = "0.4.1"
+__version__ = "0.4.2"

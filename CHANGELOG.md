@@ -2,6 +2,33 @@
 
 ## Unreleased
 
+## 0.4.2 — 2026-11-26
+
+Directory-policy fixes: the automatic policy check refused 0.4.1 for shipping
+a `bin/` directory and for the way `sync` handled the environment.
+
+- **Breaking path change:** the CLI launcher moved from `bin/afterwit` to
+  `scripts/afterwit.sh` (a plain shell script) with its Python entry point in
+  `scripts/afterwit_cli.py`. The plugin no longer ships a `bin/` directory —
+  the directory accepts one only from Verified organizations — so `afterwit`
+  is no longer put on PATH inside sessions. The slash commands are unchanged.
+  Update any cron/launchd job or alias that names `bin/afterwit`; the README
+  has a one-line shell function that restores the short `afterwit …` form.
+- `sync` no longer copies the environment for the nested `claude -p` call.
+  It used to build a filtered copy of every variable and pass it to the
+  child, which the policy check reads as forwarding whatever credentials are
+  set. The child now inherits the environment the ordinary way; afterwit only
+  hides the three "inside a Claude Code session" markers and sets
+  `AFTERWIT_SYNC` for the duration of the call (`procenv.py`). Behaviour is
+  the same, and afterwit still never reads, stores or forwards a credential.
+- The MCP server is started as plain `python3` with a literal
+  `${CLAUDE_PLUGIN_ROOT}` path, so the directory validator can read the
+  command. The `AFTERWIT_PYTHON` override is gone; on Windows the three MCP
+  tools need a real `python3` on PATH (hooks, slash commands and the CLI
+  still accept `python`).
+- `tests/test_directory_policy.py` guards all three: no `bin/` or binary
+  files, literal hook/MCP commands, no wholesale environment reads.
+
 ## 0.4.1 — 2026-10-15
 
 Directory-review fixes: the listing now says exactly what leaves the machine.

@@ -16,15 +16,14 @@ Preferred: the plugin's MCP tools (server `lessons`) — `query_lessons`
 (full-text + tag/project filters), `recent_lessons`, and `lesson_stats`.
 They are read-only and fully local.
 
-Equivalent CLI, useful for flags the tools don't expose (`afterwit` is also
-on PATH inside sessions via the plugin's bin/ directory):
+Equivalent CLI, useful for flags the tools don't expose:
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/bin/afterwit" search <keywords>   # full-text search
-"${CLAUDE_PLUGIN_ROOT}/bin/afterwit" list --limit 10     # newest lessons
-"${CLAUDE_PLUGIN_ROOT}/bin/afterwit" list --project <p>  # per project
-"${CLAUDE_PLUGIN_ROOT}/bin/afterwit" list --tag <tag>    # per topic
-"${CLAUDE_PLUGIN_ROOT}/bin/afterwit" stats               # trends and counts
+"${CLAUDE_PLUGIN_ROOT}/scripts/afterwit.sh" search <keywords>   # full-text search
+"${CLAUDE_PLUGIN_ROOT}/scripts/afterwit.sh" list --limit 10     # newest lessons
+"${CLAUDE_PLUGIN_ROOT}/scripts/afterwit.sh" list --project <p>  # per project
+"${CLAUDE_PLUGIN_ROOT}/scripts/afterwit.sh" list --tag <tag>    # per topic
+"${CLAUDE_PLUGIN_ROOT}/scripts/afterwit.sh" stats               # trends and counts
 ```
 
 Add `-v` to `search`/`list` for problem/root-cause/resolution detail.
