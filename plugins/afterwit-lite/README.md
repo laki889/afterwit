@@ -52,7 +52,8 @@ It adds no data flow of its own. There are no servers, no accounts, no
 telemetry and no network calls: distilling happens inside the Claude session
 you are already having, under the same terms as the rest of that session.
 Claude is told to keep secrets, keys, tokens and personal data out of the
-lessons, but review the file before you share it.
+lessons, but review the file before you share it. [PRIVACY.md](PRIVACY.md) has
+the full statement.
 
 ## Afterwit Lite and Afterwit
 

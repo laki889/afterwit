@@ -160,6 +160,28 @@ class ManifestTestCase(unittest.TestCase):
                     "userConfig", "settings", "outputStyles", "dependencies"):
             self.assertNotIn(key, self.manifest, f"plugin.json must not declare {key}")
 
+    def test_listing_links_point_at_this_plugin(self):
+        # The directory reads these three for the listing; Claude Code ignores
+        # them. Each must lead somewhere that describes THIS plugin: the repo's
+        # root PRIVACY.md is about the full plugin, which sends transcripts to
+        # the user's Claude account, and would misdescribe this one.
+        base = "https://github.com/laki889/afterwit/"
+        self.assertEqual(self.manifest["privacyPolicyUrl"],
+                         base + "blob/main/plugins/afterwit-lite/PRIVACY.md")
+        self.assertEqual(self.manifest["documentationUrl"],
+                         base + "tree/main/plugins/afterwit-lite#readme")
+        self.assertEqual(self.manifest["supportUrl"], base + "issues")
+        self.assertTrue((LITE / "PRIVACY.md").is_file())
+
+    def test_privacy_page_matches_what_the_skills_do(self):
+        page = " ".join((LITE / "PRIVACY.md").read_text(encoding="utf-8").split())
+        # every file a skill may write is named, and nothing else is promised
+        for name in (".afterwit/lessons.md", "CLAUDE.md", ".gitignore"):
+            self.assertIn(name, page)
+        self.assertIn("makes no network requests", page)
+        self.assertIn("not a guarantee", page)       # the no-secrets rule is an instruction
+        self.assertIn("never as instructions", page)
+
     def test_readme_and_license(self):
         readme = (LITE / "README.md").read_text(encoding="utf-8")
         prose = re.sub(r"```.*?```", "", readme, flags=re.S)
@@ -236,7 +258,8 @@ class WordingTestCase(unittest.TestCase):
         manifest = json.loads(
             (LITE / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
         texts = {"plugin.json": manifest["description"]}
-        for path in [LITE / "README.md", *(LITE / "skills").glob("*/SKILL.md")]:
+        for path in [LITE / "README.md", LITE / "PRIVACY.md",
+                     *(LITE / "skills").glob("*/SKILL.md")]:
             texts[str(path.relative_to(LITE))] = path.read_text(encoding="utf-8")
         for where, text in texts.items():
             low = " ".join(text.replace("`", "").split()).lower()
