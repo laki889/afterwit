@@ -9,6 +9,9 @@
   "homepage": "https://github.com/laki889/afterwit",
   "repository": "https://github.com/laki889/afterwit",
   "license": "MIT",
+  "documentationUrl": "https://github.com/laki889/afterwit/tree/main/plugins/afterwit-lite#readme",
+  "supportUrl": "https://github.com/laki889/afterwit/issues",
+  "privacyPolicyUrl": "https://github.com/laki889/afterwit/blob/main/plugins/afterwit-lite/PRIVACY.md",
   "keywords": [
     "lessons-learned",
     "self-reflection",
